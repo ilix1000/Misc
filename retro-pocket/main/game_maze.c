@@ -25,7 +25,7 @@
 static uint8_t map[MAX_CELLS][MAX_CELLS]; /* 0 empty, 1..3 wall styles, 9 exit */
 static int msize;
 static float px, py, ang;
-static float zbuf[W];
+static float zbuf[LCD_MAX_DIM];
 
 static void gen_maze(int cells)
 {
@@ -102,7 +102,7 @@ static void render(uint16_t *fb, float t)
         float dist = side == 0 ? sdx - ddx : sdy - ddy;
         if (dist < 0.05f) dist = 0.05f;
         zbuf[x] = dist;
-        int lh = (int)(H / dist);
+        int lh = (int)(W * 0.8f / dist); /* = H in landscape; keeps walls square in portrait */
         int y0 = H / 2 - lh / 2, y1 = H / 2 + lh / 2;
 
         /* where along the wall the ray hit -> simple procedural "texture" */
@@ -138,7 +138,7 @@ static void render(uint16_t *fb, float t)
 
 static void draw_map(uint16_t *fb)
 {
-    int s = (H - 8) / msize;
+    int s = ((W < H ? W : H) - 8) / msize;
     if (s < 2) s = 2;
     int ox = (W - msize * s) / 2, oy = (H - msize * s) / 2;
     gfx_dim(fb);

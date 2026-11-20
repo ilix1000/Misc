@@ -17,15 +17,15 @@
 
 #define LCD_SPI_HZ     (40 * 1000 * 1000) /* drop to 26 MHz if you see garbage */
 
-/* Panel geometry. We drive it in landscape: 160 x 128. */
-#define LCD_WIDTH      160
-#define LCD_HEIGHT     128
-/* Some 1.77" panels are offset by 1-2 px or need BGR / inversion. */
+/* Panel geometry: 128 x 160. Landscape (160x128) or portrait (128x160) is
+ * picked at runtime in Settings > Screen. */
+#define LCD_PANEL_LONG  160
+#define LCD_PANEL_SHORT 128
+/* Some 1.77" panels are offset by 1-2 px (values are for landscape). */
 #define LCD_X_OFFSET   0
 #define LCD_Y_OFFSET   0
-#define LCD_BGR        1    /* 1 if red and blue are swapped */
+#define LCD_BGR        1    /* default colour order; Settings > Swap red/blue flips it */
 #define LCD_INVERT     0    /* 1 if colours look like a photo negative */
-#define LCD_ROTATE_180 0    /* 1 if the picture is upside down */
 
 /* ---------- micro SD card (SPI3, separate bus) ---------- */
 #define PIN_SD_MOSI    15

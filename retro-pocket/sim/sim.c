@@ -19,13 +19,20 @@ int64_t esp_timer_get_time(void) { return s_us++; }
 void vTaskDelay(uint32_t ticks) { s_us += (int64_t)ticks * 1000; }
 
 /* ---- display ---- */
-static uint16_t fb[2][LCD_WIDTH * LCD_HEIGHT];
+static uint16_t fb[2][LCD_PIXELS];
+int g_lcd_w = LCD_PANEL_LONG, g_lcd_h = LCD_PANEL_SHORT;
 static int back;
 static char pending_shot[128];
 static long presents;
 
 void display_init(void) {}
 void display_set_backlight(int p) {}
+void display_set_rotation(int rot, bool swap_rb)
+{
+    bool portrait = rot == ROT_PORTRAIT || rot == ROT_PORTRAIT_180;
+    g_lcd_w = portrait ? LCD_PANEL_SHORT : LCD_PANEL_LONG;
+    g_lcd_h = portrait ? LCD_PANEL_LONG : LCD_PANEL_SHORT;
+}
 uint16_t *display_fb(void) { return fb[back]; }
 const uint16_t *display_front(void) { return fb[back ^ 1]; }
 void display_wait(void) {}
@@ -130,6 +137,8 @@ int main(void)
 {
     srand(1);
     display_init();
+    if (getenv("SIM_ROT")) g_settings.rotation = atoi(getenv("SIM_ROT"));
+    display_set_rotation(g_settings.rotation, false);
     input_init();
     sd_init();
     launcher_run();

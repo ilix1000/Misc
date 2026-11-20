@@ -1,4 +1,5 @@
 #pragma once
+#include <stdbool.h>
 #include <stdint.h>
 #include "board.h"
 
@@ -8,7 +9,18 @@
 #define SWAP16(c)       ((uint16_t)(((c) << 8) | ((c) >> 8)))
 #define RGB(r, g, b)    SWAP16(RGB565(r, g, b))
 
+/* Current logical screen size: 160x128 in landscape, 128x160 in portrait. */
+extern int g_lcd_w, g_lcd_h;
+#define LCD_WIDTH   g_lcd_w
+#define LCD_HEIGHT  g_lcd_h
+#define LCD_PIXELS  (LCD_PANEL_LONG * LCD_PANEL_SHORT)
+#define LCD_MAX_DIM LCD_PANEL_LONG
+
+enum { ROT_LANDSCAPE, ROT_PORTRAIT, ROT_LANDSCAPE_180, ROT_PORTRAIT_180, ROT_COUNT };
+
 void display_init(void);
+/* Changes orientation (ROT_*) and colour order. Safe to call any time. */
+void display_set_rotation(int rot, bool swap_rb);
 void display_set_backlight(int percent);
 
 /* Double-buffered: draw into display_fb(), then display_present() sends it

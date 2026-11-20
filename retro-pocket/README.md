@@ -74,7 +74,7 @@ The buttons use the chip's internal pull-ups, so you don't need resistors.
 |       | Stick up / down    | Pick a game |
 |       | A / START          | Play |
 |       | SELECT             | Jump to the next letter (A, B, C...) |
-| Settings | A / B           | Change value up / down |
+| Settings | A / B           | Change value up / down (Screen, Stick, colors...) |
 | In game | Stick           | D-pad |
 |       | A, B, START, SELECT | Same as the console |
 |       | **Click stick**    | Pause menu: Resume, Save state, Load state, Reset, Quit |
@@ -130,16 +130,25 @@ If your board has **quad** PSRAM (N8R2, N4R2) instead of octal, change
 `CONFIG_SPIRAM_MODE_OCT` to `CONFIG_SPIRAM_MODE_QUAD` in `sdkconfig.defaults`,
 delete `sdkconfig`, and rebuild.
 
-### Screen looks wrong?
+### Screen or stick the wrong way round?
 
-Edit `main/board.h`:
+Most of this is fixed in **Settings**, so the prebuilt `.bin` works as-is:
 
-- red and blue swapped: flip `LCD_BGR`
-- colors inverted: flip `LCD_INVERT`
-- upside down: flip `LCD_ROTATE_180`
+| Setting | What it does |
+|---------|--------------|
+| **Screen** | Landscape, Portrait, Land 180, Port 180. Pick the one that's upright for how you hold it. |
+| **Stick** | Turns the joystick 0 / 90 / 180 / 270 degrees, so pushing up moves up. |
+| **Swap red/blue** | Use it if red things look blue. |
+
+In portrait the menu shows more games per page. Game Boy and NES games keep
+their shape, at full width with black bars above and below. Maze Runner 3D
+fills the whole tall screen.
+
+Needs a rebuild (`main/board.h`):
+
+- colors look like a photo negative: flip `LCD_INVERT`
 - 1-2 px garbage line on an edge: set `LCD_X_OFFSET` / `LCD_Y_OFFSET` to 1 or 2
 - noise or glitches: lower `LCD_SPI_HZ` to 26 MHz
-- joystick directions wrong: `JOY_INVERT_X`, `JOY_INVERT_Y`, `JOY_SWAP_XY`
 
 Don't touch the joystick while the device boots: that's when it learns the center position.
 
@@ -153,6 +162,7 @@ testing changes without flashing:
 cd sim && ./build.sh
 mkdir -p simsd shots && cp some-game.zip simsd/     # simsd/ acts as the SD card
 SIM_SCRIPT=demo.txt ./retro-pocket-sim             # writes the shots/*.ppm listed in the script
+SIM_ROT=1 SIM_SCRIPT=portrait.txt ./retro-pocket-sim   # same, in portrait
 ```
 
 Each script line is `<frames to wait> <KEYS | shot:NAME | quit>`. Keys are joined

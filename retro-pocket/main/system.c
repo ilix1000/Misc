@@ -132,10 +132,11 @@ void message_box(const char *line1, const char *line2, int ms)
     for (;;) {
         uint16_t *fb = display_fb();
         snapshot_draw(fb);
-        gfx_rect(fb, 6, 44, LCD_WIDTH - 12, 40, C_PANEL);
-        gfx_frame(fb, 6, 44, LCD_WIDTH - 12, 40, C_ACCENT);
-        gfx_text_center(fb, 54, line1, C_TEXT);
-        if (line2) gfx_text_center(fb, 66, line2, C_DIM);
+        int by = (LCD_HEIGHT - 40) / 2;
+        gfx_rect(fb, 4, by, LCD_WIDTH - 8, 40, C_PANEL);
+        gfx_frame(fb, 4, by, LCD_WIDTH - 8, 40, C_ACCENT);
+        gfx_text_center(fb, by + 10, line1, C_TEXT);
+        if (line2) gfx_text_center(fb, by + 22, line2, C_DIM);
         display_present();
         input_poll();
         if (input_pressed()) break;

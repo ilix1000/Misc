@@ -14,7 +14,10 @@
 
 static const char *TAG = "lcd";
 
-#define FB_PIXELS (LCD_WIDTH * LCD_HEIGHT)
+#define FB_PIXELS LCD_PIXELS
+
+int g_lcd_w = LCD_PANEL_LONG, g_lcd_h = LCD_PANEL_SHORT;
+static bool s_portrait;
 
 static spi_device_handle_t s_spi;
 static uint16_t *s_fb[2];
@@ -66,8 +69,10 @@ static const uint8_t init_seq[] = {
 
 static void set_window(int x0, int y0, int x1, int y1)
 {
-    x0 += LCD_X_OFFSET; x1 += LCD_X_OFFSET;
-    y0 += LCD_Y_OFFSET; y1 += LCD_Y_OFFSET;
+    int ox = s_portrait ? LCD_Y_OFFSET : LCD_X_OFFSET;
+    int oy = s_portrait ? LCD_X_OFFSET : LCD_Y_OFFSET;
+    x0 += ox; x1 += ox;
+    y0 += oy; y1 += oy;
     uint8_t ca[4] = { x0 >> 8, x0 & 0xFF, x1 >> 8, x1 & 0xFF };
     uint8_t ra[4] = { y0 >> 8, y0 & 0xFF, y1 >> 8, y1 & 0xFF };
     cmd(0x2A, ca, 4);
@@ -141,10 +146,7 @@ void display_init(void)
         }
     }
 
-    /* MADCTL: MV swaps rows/cols for landscape, MX/MY flip, bit3 = BGR. */
-    uint8_t madctl = LCD_ROTATE_180 ? 0xA0 : 0x60;
-    if (LCD_BGR) madctl |= 0x08;
-    cmd(0x36, &madctl, 1);
+    display_set_rotation(ROT_LANDSCAPE, false);
     cmd(LCD_INVERT ? 0x21 : 0x20, NULL, 0);
 
     /* Clear the panel before turning it on so there's no noise flash. */
@@ -155,6 +157,20 @@ void display_init(void)
     backlight_init();
     display_set_backlight(80);
     ESP_LOGI(TAG, "ST7735 ready (%dx%d @ %d MHz)", LCD_WIDTH, LCD_HEIGHT, LCD_SPI_HZ / 1000000);
+}
+
+void display_set_rotation(int rot, bool swap_rb)
+{
+    /* MADCTL: MV swaps rows/cols (landscape), MX/MY mirror, bit 3 = BGR. */
+    static const uint8_t madctl[ROT_COUNT] = { 0x60, 0x00, 0xA0, 0xC0 };
+    if (rot < 0 || rot >= ROT_COUNT) rot = ROT_LANDSCAPE;
+    display_wait();
+    uint8_t m = madctl[rot];
+    if (LCD_BGR ^ swap_rb) m |= 0x08;
+    cmd(0x36, &m, 1);
+    s_portrait = rot == ROT_PORTRAIT || rot == ROT_PORTRAIT_180;
+    g_lcd_w = s_portrait ? LCD_PANEL_SHORT : LCD_PANEL_LONG;
+    g_lcd_h = s_portrait ? LCD_PANEL_LONG : LCD_PANEL_SHORT;
 }
 
 uint16_t *display_fb(void)

@@ -20,9 +20,9 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
-#define ROWS        10
 #define ROW_H       10
 #define LIST_Y      16
+#define ROWS        ((LCD_HEIGHT - LIST_Y - 12) / ROW_H)   /* 10 landscape, 13 portrait */
 
 typedef enum { TAB_ROMS, TAB_BUILTIN, TAB_SETTINGS } tab_kind_t;
 
@@ -48,7 +48,7 @@ static const struct { const char *name; const char *desc; void (*run)(const char
 };
 #define BUILTIN_COUNT ((int)(sizeof(builtins) / sizeof(builtins[0])))
 
-#define SETTINGS_COUNT 5
+#define SETTINGS_COUNT 8
 
 static int s_tab;
 static int64_t s_sel_since;   /* for scrolling long names */
@@ -69,12 +69,13 @@ static void scan_progress(int files, int games, const char *current)
     uint16_t *fb = display_fb();
     char buf[40];
     gfx_fill(fb, C_BG);
-    gfx_text_center(fb, 34, "Looking for games...", C_TEXT);
+    int cy = LCD_HEIGHT / 2;
+    gfx_text_center(fb, cy - 30, "Looking for games...", C_TEXT);
     snprintf(buf, sizeof(buf), "%d found", games);
-    gfx_text_center(fb, 54, buf, C_ACCENT);
+    gfx_text_center(fb, cy - 10, buf, C_ACCENT);
     snprintf(buf, sizeof(buf), "%d files checked", files);
-    gfx_text_center(fb, 66, buf, C_DIM);
-    gfx_text(fb, 4, 100, current, C_DIM, (LCD_WIDTH - 8) / CHAR_W);
+    gfx_text_center(fb, cy + 2, buf, C_DIM);
+    gfx_text(fb, 4, cy + 36, current, C_DIM, (LCD_WIDTH - 8) / CHAR_W);
     display_present();
 }
 
@@ -91,16 +92,25 @@ static void rescan(void)
 
 /* ---------------- settings ---------------- */
 
-static void setting_label(int i, char *out, size_t n)
+static const char *const rot_names[ROT_COUNT] = { "Landscape", "Portrait", "Land 180", "Port 180" };
+
+/* Fills in the setting's name and current value (value may stay empty). */
+static void setting_label(int i, char *name, char *val, size_t n)
 {
+    val[0] = 0;
     switch (i) {
-        case 0: snprintf(out, n, "Brightness   %d%%", g_settings.brightness); break;
-        case 1: snprintf(out, n, "GB colors    %s", gb_palette_names[g_settings.gb_palette]); break;
-        case 2: snprintf(out, n, "NES view     %s", g_settings.nes_scale ? "Trim edges" : "Full"); break;
-        case 3: snprintf(out, n, "Show FPS     %s", g_settings.show_fps ? "On" : "Off"); break;
-        case 4: snprintf(out, n, "Rescan SD card"); break;
+        case 0: strcpy(name, "Brightness"); snprintf(val, n, "%d%%", g_settings.brightness); break;
+        case 1: strcpy(name, "Screen");     strcpy(val, rot_names[g_settings.rotation]); break;
+        case 2: strcpy(name, "Stick");      snprintf(val, n, "%d deg", g_settings.stick_rot * 90); break;
+        case 3: strcpy(name, "Swap red/blue"); strcpy(val, g_settings.swap_rb ? "On" : "Off"); break;
+        case 4: strcpy(name, "GB colors");  strcpy(val, gb_palette_names[g_settings.gb_palette]); break;
+        case 5: strcpy(name, "NES view");   strcpy(val, g_settings.nes_scale ? "Trim" : "Full"); break;
+        case 6: strcpy(name, "Show FPS");   strcpy(val, g_settings.show_fps ? "On" : "Off"); break;
+        case 7: strcpy(name, "Rescan SD card"); break;
     }
 }
+
+static int wrap(int v, int dir, int count) { return (v + dir + count) % count; }
 
 static void setting_change(int i, int dir)
 {
@@ -111,10 +121,20 @@ static void setting_change(int i, int dir)
             if (g_settings.brightness < 10) g_settings.brightness = 100;
             display_set_backlight(g_settings.brightness);
             break;
-        case 1: g_settings.gb_palette = (g_settings.gb_palette + dir + GB_PALETTE_COUNT) % GB_PALETTE_COUNT; break;
-        case 2: g_settings.nes_scale ^= 1; break;
-        case 3: g_settings.show_fps ^= 1; break;
-        case 4: if (dir > 0) rescan(); return;
+        case 1:
+            g_settings.rotation = wrap(g_settings.rotation, dir, ROT_COUNT);
+            display_set_rotation(g_settings.rotation, g_settings.swap_rb);
+            for (int t = 0; t < TAB_COUNT; t++) tabs[t].top = 0; /* row count changed */
+            break;
+        case 2: g_settings.stick_rot = wrap(g_settings.stick_rot, dir, 4); break;
+        case 3:
+            g_settings.swap_rb ^= 1;
+            display_set_rotation(g_settings.rotation, g_settings.swap_rb);
+            break;
+        case 4: g_settings.gb_palette = wrap(g_settings.gb_palette, dir, GB_PALETTE_COUNT); break;
+        case 5: g_settings.nes_scale ^= 1; break;
+        case 6: g_settings.show_fps ^= 1; break;
+        case 7: if (dir > 0) rescan(); return;
     }
     settings_save();
 }
@@ -136,11 +156,16 @@ static void draw_footer(uint16_t *fb, const char *left, const char *right)
     if (right) gfx_text(fb, LCD_WIDTH - 2 - (int)strlen(right) * CHAR_W, LCD_HEIGHT - 8, right, C_DIM, 0);
 }
 
-static void draw_row(uint16_t *fb, int row, const char *text, bool selected)
+static void draw_row(uint16_t *fb, int row, const char *text, const char *value, bool selected)
 {
     int y = LIST_Y + row * ROW_H;
     int x = 4, max = (LCD_WIDTH - 8) / CHAR_W;
     if (selected) gfx_rect(fb, 0, y - 1, LCD_WIDTH, ROW_H, C_SEL);
+    if (value && value[0]) {
+        int vw = (int)strlen(value) * CHAR_W;
+        gfx_text(fb, LCD_WIDTH - 4 - vw, y, value, selected ? C_ACCENT : C_TEXT, 0);
+        max -= (int)strlen(value) + 1;
+    }
     int len = strlen(text), off = 0;
     if (selected && len > max) {
         /* marquee: pause, scroll, pause */
@@ -161,24 +186,27 @@ static void draw(const tab_t *t)
     int n = item_count(t);
 
     if (t->kind == TAB_ROMS && !sd_ok()) {
-        gfx_text_center(fb, 46, "No SD card found", C_RED);
-        gfx_text_center(fb, 60, "Insert a FAT32 card", C_DIM);
-        gfx_text_center(fb, 70, "and restart", C_DIM);
+        int cy = LCD_HEIGHT / 2;
+        gfx_text_center(fb, cy - 18, "No SD card found", C_RED);
+        gfx_text_center(fb, cy - 4, "Insert a FAT32 card", C_DIM);
+        gfx_text_center(fb, cy + 6, "and restart", C_DIM);
     } else if (t->kind == TAB_ROMS && n == 0) {
-        gfx_text_center(fb, 36, "No games found", C_TEXT);
-        gfx_text_center(fb, 54, "Copy .zip .nes .gb", C_DIM);
-        gfx_text_center(fb, 64, "files anywhere on", C_DIM);
-        gfx_text_center(fb, 74, "the SD card", C_DIM);
+        int cy = LCD_HEIGHT / 2;
+        gfx_text_center(fb, cy - 28, "No games found", C_TEXT);
+        gfx_text_center(fb, cy - 10, "Copy .zip .nes .gb", C_DIM);
+        gfx_text_center(fb, cy, "files anywhere on", C_DIM);
+        gfx_text_center(fb, cy + 10, "the SD card", C_DIM);
     } else {
         for (int r = 0; r < ROWS && t->top + r < n; r++) {
             int i = t->top + r;
             const char *label = buf;
+            char val[24] = "";
             switch (t->kind) {
                 case TAB_ROMS: label = games_get(t->sys, i)->name; break;
                 case TAB_BUILTIN: label = builtins[i].name; break;
-                default: setting_label(i, buf, sizeof(buf)); break;
+                default: setting_label(i, buf, val, sizeof(val)); break;
             }
-            draw_row(fb, r, label, i == t->sel);
+            draw_row(fb, r, label, val, i == t->sel);
         }
         if (n > ROWS) { /* scrollbar */
             int h = (ROWS * ROW_H) * ROWS / n, y = LIST_Y + (ROWS * ROW_H - h) * t->top / (n - ROWS);
@@ -189,7 +217,7 @@ static void draw(const tab_t *t)
     }
 
     if (t->kind == TAB_SETTINGS) {
-        draw_footer(fb, "A:+  B:-", "v1.1");
+        draw_footer(fb, "A:+  B:-", "v1.2");
     } else {
         snprintf(buf, sizeof(buf), "%d/%d", n ? t->sel + 1 : 0, n);
         draw_footer(fb, t->kind == TAB_ROMS && n > ROWS ? "A:Play SEL:A-Z" : "A:Play", buf);
@@ -204,10 +232,11 @@ static void splash(void)
     for (int f = 0; f <= 30; f++) {
         uint16_t *fb = display_fb();
         gfx_fill(fb, C_BG);
-        int w = f * 4 > 120 ? 120 : f * 4;
-        gfx_rect(fb, (LCD_WIDTH - w) / 2, 70, w, 2, C_ACCENT);
-        gfx_text_center(fb, 52, "RETRO POCKET", C_TEXT);
-        if (f > 15) gfx_text_center(fb, 80, sd_ok() ? "SD card OK" : "No SD card", sd_ok() ? C_GREEN : C_RED);
+        int w = f * 4 > LCD_WIDTH - 40 ? LCD_WIDTH - 40 : f * 4;
+        int cy = LCD_HEIGHT / 2;
+        gfx_rect(fb, (LCD_WIDTH - w) / 2, cy + 6, w, 2, C_ACCENT);
+        gfx_text_center(fb, cy - 12, "RETRO POCKET", C_TEXT);
+        if (f > 15) gfx_text_center(fb, cy + 16, sd_ok() ? "SD card OK" : "No SD card", sd_ok() ? C_GREEN : C_RED);
         display_present();
         vTaskDelay(pdMS_TO_TICKS(20));
     }
@@ -223,8 +252,8 @@ static void launch(tab_t *t)
     if (!g) return;
     uint16_t *fb = display_fb();
     gfx_fill(fb, C_BG);
-    gfx_text_center(fb, 52, "Loading...", C_TEXT);
-    gfx_text(fb, 4, 70, g->name, C_DIM, (LCD_WIDTH - 8) / CHAR_W);
+    gfx_text_center(fb, LCD_HEIGHT / 2 - 12, "Loading...", C_TEXT);
+    gfx_text(fb, 4, LCD_HEIGHT / 2 + 6, g->name, C_DIM, (LCD_WIDTH - 8) / CHAR_W);
     display_present();
     display_wait();
     t->run(g->path);

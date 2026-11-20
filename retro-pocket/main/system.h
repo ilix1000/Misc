@@ -8,6 +8,9 @@ typedef struct {
     int gb_palette;   /* index into GB palettes */
     int nes_scale;    /* 0 = fit whole screen, 1 = crop (sharper, cuts edges) */
     int show_fps;     /* 0/1 */
+    int rotation;     /* ROT_* from display.h */
+    int stick_rot;    /* joystick turned by 0/90/180/270 degrees */
+    int swap_rb;      /* 0/1, swaps red and blue on the panel */
 } settings_t;
 
 extern settings_t g_settings;

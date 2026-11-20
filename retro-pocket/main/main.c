@@ -18,6 +18,7 @@ void app_main(void)
 {
     settings_load();
     display_init();
+    display_set_rotation(g_settings.rotation, g_settings.swap_rb);
     display_set_backlight(g_settings.brightness);
     input_init();
     if (!sd_init()) ESP_LOGW("main", "running without SD card");

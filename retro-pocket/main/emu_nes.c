@@ -34,16 +34,29 @@ static void *agnes_alloc(size_t n)
 #define NES_FRAME_US 16639 /* 60.1 Hz */
 
 static uint16_t s_pal[64];      /* unswapped RGB565, for blending */
-static uint16_t s_xmap[LCD_WIDTH];
-static uint16_t s_ymap[LCD_HEIGHT];
+static uint16_t s_xmap[LCD_MAX_DIM];
+static uint16_t s_ymap[LCD_MAX_DIM];
+static int s_ox, s_oy, s_dw, s_dh; /* where the picture goes on screen */
 
 static void build_maps(int trim)
 {
     /* trim = 1 hides the 8 px overscan border TVs never showed. */
     int sx0 = trim ? 8 : 0, sw = trim ? 240 : 256;
     int sy0 = trim ? 8 : 0, sh = trim ? 224 : 240;
-    for (int x = 0; x < LCD_WIDTH; x++) s_xmap[x] = sx0 + x * sw / LCD_WIDTH;
-    for (int y = 0; y < LCD_HEIGHT; y++) s_ymap[y] = sy0 + y * sh / LCD_HEIGHT;
+    if (LCD_WIDTH >= LCD_HEIGHT) {
+        /* landscape: fill the screen */
+        s_dw = LCD_WIDTH;
+        s_dh = LCD_HEIGHT;
+    } else {
+        /* portrait: full width, keep the aspect ratio, black bars */
+        s_dw = LCD_WIDTH;
+        s_dh = sh * s_dw / sw;
+        if (s_dh > LCD_HEIGHT) s_dh = LCD_HEIGHT;
+    }
+    s_ox = (LCD_WIDTH - s_dw) / 2;
+    s_oy = (LCD_HEIGHT - s_dh) / 2;
+    for (int x = 0; x < s_dw; x++) s_xmap[x] = sx0 + x * sw / s_dw;
+    for (int y = 0; y < s_dh; y++) s_ymap[y] = sy0 + y * sh / s_dh;
     for (int i = 0; i < 64; i++)
         s_pal[i] = RGB565(g_colors[i].r, g_colors[i].g, g_colors[i].b);
 }
@@ -52,12 +65,16 @@ static void build_maps(int trim)
 
 static void IRAM_ATTR blit(const agnes_t *nes, uint16_t *fb)
 {
+    if (s_oy > 0) {
+        gfx_rect(fb, 0, 0, LCD_WIDTH, s_oy, C_BLACK);
+        gfx_rect(fb, 0, s_oy + s_dh, LCD_WIDTH, LCD_HEIGHT - s_oy - s_dh, C_BLACK);
+    }
     const uint8_t *src = nes->ppu.screen_buffer;
-    for (int y = 0; y < LCD_HEIGHT; y++) {
+    for (int y = 0; y < s_dh; y++) {
         const uint8_t *r0 = src + s_ymap[y] * AGNES_SCREEN_WIDTH;
         const uint8_t *r1 = r0 + (s_ymap[y] < 239 ? AGNES_SCREEN_WIDTH : 0);
-        uint16_t *dst = fb + y * LCD_WIDTH;
-        for (int x = 0; x < LCD_WIDTH; x++) {
+        uint16_t *dst = fb + (s_oy + y) * LCD_WIDTH + s_ox;
+        for (int x = 0; x < s_dw; x++) {
             int sx = s_xmap[x], sx1 = sx < 255 ? sx + 1 : sx;
             uint16_t top = BLEND(s_pal[r0[sx] & 63], s_pal[r0[sx1] & 63]);
             uint16_t bot = BLEND(s_pal[r1[sx] & 63], s_pal[r1[sx1] & 63]);

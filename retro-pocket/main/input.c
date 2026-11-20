@@ -3,6 +3,7 @@
  */
 #include "input.h"
 #include "board.h"
+#include "system.h"
 #include "driver/gpio.h"
 #include "esp_adc/adc_oneshot.h"
 #include "esp_timer.h"
@@ -74,6 +75,9 @@ uint32_t input_poll(void)
     if (JOY_SWAP_XY) { float t = x; x = y; y = t; }
     if (JOY_INVERT_X) x = -x;
     if (JOY_INVERT_Y) y = -y;
+    for (int r = 0; r < (g_settings.stick_rot & 3); r++) { /* 90 degrees clockwise each */
+        float t = x; x = -y; y = t;
+    }
     s_jx = x; s_jy = y;
     s_dir_x = hysteresis(x, s_dir_x);
     s_dir_y = hysteresis(y, s_dir_y);

@@ -1,0 +1,7 @@
+build/
+sdkconfig
+sdkconfig.old
+managed_components/
+sim/retro-pocket-sim
+sim/simsd/
+sim/shots/

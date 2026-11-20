@@ -1,0 +1,16 @@
+2 RIGHT
+1 -
+1 RIGHT
+1 -
+1 A
+1 -
+2 shot:shots/m1
+30 LEFT
+1 shot:shots/m2
+40 UP
+1 shot:shots/m3
+25 RIGHT
+1 shot:shots/m4
+30 UP
+1 shot:shots/m5
+1 quit

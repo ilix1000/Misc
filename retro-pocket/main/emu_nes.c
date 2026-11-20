@@ -18,24 +18,99 @@
 #include "input.h"
 #include "esp_heap_caps.h"
 #include "esp_attr.h"
+#include "esp_timer.h"
 
 /* Pull the core in directly so we can read the PPU's index buffer instead of
- * calling agnes_get_screen_pixel() 61,440 times per frame. */
-/* ...and keep the emulator state (~95 KB, touched every PPU dot) in fast
- * internal RAM instead of PSRAM. */
+ * calling agnes_get_screen_pixel() 61,440 times per frame, keep its hot
+ * code in IRAM and its state (~23 KB) in fast internal RAM. */
+#define AGNES_HOT IRAM_ATTR
 static void *agnes_alloc(size_t n)
 {
-    /* ...but only if Wi-Fi and the web server keep enough internal RAM. */
+    /* internal RAM only if Wi-Fi and the web server keep enough of it */
     void *p = NULL;
-    if (heap_caps_get_free_size(MALLOC_CAP_INTERNAL) > n + 64 * 1024)
+    if (heap_caps_get_free_size(MALLOC_CAP_INTERNAL) > n + 48 * 1024)
         p = heap_caps_malloc(n, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
     return p ? p : heap_caps_malloc(n, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
 }
+static void *screen_alloc(size_t n)
+{
+    /* written once per line, read once per frame: PSRAM is fine */
+    void *p = heap_caps_malloc(n, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    return p ? p : malloc(n);
+}
+#define AGNES_SCREEN_ALLOC(n) screen_alloc(n)
+#define AGNES_SCREEN_FREE(p) free(p)
 #define malloc(n) agnes_alloc(n)
 #include "cores/agnes.c"
 #undef malloc
 
 #define NES_FRAME_US 16639 /* 60.1 Hz */
+#define MAX_SKIP 3          /* show at least every 4th frame */
+
+static void blit(const uint8_t *src, uint16_t *fb);
+
+/* ---------------- display on the other core ----------------
+ * While core 1 emulates the next frame, core 0 scales the finished one and
+ * sends it to the panel. The two NES screen buffers are swapped, not copied. */
+
+static int s_shown, s_shown_fps;
+static int64_t s_fps_t0;
+
+static void show_frame(const uint8_t *src)
+{
+    uint16_t *fb = display_fb();
+    blit(src, fb);
+    s_shown++;
+    int64_t now = esp_timer_get_time();
+    if (now - s_fps_t0 >= 1000000) { s_shown_fps = s_shown; s_shown = 0; s_fps_t0 = now; }
+    if (g_settings.show_fps) draw_fps(fb, s_shown_fps);
+    display_present();
+}
+
+#ifdef SIM
+static bool present_async(const uint8_t *frame) { show_frame(frame); return true; }
+static void present_wait(void) {}
+#else
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/semphr.h"
+static SemaphoreHandle_t s_work, s_idle;
+static const uint8_t *volatile s_job;
+
+static void blit_task(void *arg)
+{
+    for (;;) {
+        xSemaphoreTake(s_work, portMAX_DELAY);
+        show_frame(s_job);
+        xSemaphoreGive(s_idle);
+    }
+}
+
+/* Hands a finished frame to core 0 if it's free (then the caller swaps
+ * buffers). Returns false, dropping the frame, if core 0 is still busy. */
+static bool present_async(const uint8_t *frame)
+{
+    if (!s_work) {
+        s_work = xSemaphoreCreateBinary();
+        s_idle = xSemaphoreCreateBinary();
+        xSemaphoreGive(s_idle);
+        xTaskCreatePinnedToCore(blit_task, "nes_blit", 4096, NULL, 6, NULL, 0);
+    }
+    if (xSemaphoreTake(s_idle, 0) != pdTRUE) return false;
+    s_job = frame;
+    xSemaphoreGive(s_work);
+    return true;
+}
+
+/* Before anything else draws (menus, exit): let core 0 finish. */
+static void present_wait(void)
+{
+    if (!s_idle) return;
+    xSemaphoreTake(s_idle, portMAX_DELAY);
+    xSemaphoreGive(s_idle);
+    display_wait();
+}
+#endif
 
 static uint16_t s_pal[64];      /* unswapped RGB565, for blending */
 static uint16_t s_xmap[LCD_MAX_DIM];
@@ -67,13 +142,12 @@ static void build_maps(int trim)
 
 #define BLEND(a, b) ((uint16_t)((((a) & 0xF7DE) >> 1) + (((b) & 0xF7DE) >> 1)))
 
-static void IRAM_ATTR blit(const agnes_t *nes, uint16_t *fb)
+static void IRAM_ATTR blit(const uint8_t *src, uint16_t *fb)
 {
     if (s_oy > 0) {
         gfx_rect(fb, 0, 0, LCD_WIDTH, s_oy, C_BLACK);
         gfx_rect(fb, 0, s_oy + s_dh, LCD_WIDTH, LCD_HEIGHT - s_oy - s_dh, C_BLACK);
     }
-    const uint8_t *src = nes->ppu.screen_buffer;
     for (int y = 0; y < s_dh; y++) {
         const uint8_t *r0 = src + s_ymap[y] * AGNES_SCREEN_WIDTH;
         const uint8_t *r1 = r0 + (s_ymap[y] < 239 ? AGNES_SCREEN_WIDTH : 0);
@@ -138,21 +212,29 @@ void emu_nes_run(const char *path)
     if (bram) file_read_into(sav, bram, BATTERY_SIZE);
 
     build_maps(g_settings.nes_scale);
+    /* second screen buffer, so core 0 can show one while we draw the next */
+    uint8_t *bufs[2] = { nes->ppu.screen_buffer, heap_caps_malloc(AGNES_SCREEN_WIDTH * AGNES_SCREEN_HEIGHT, MALLOC_CAP_SPIRAM) };
+    int cur = 0;
     pacer_t pacer;
     pacer_start(&pacer);
+    s_fps_t0 = esp_timer_get_time();
+    int skipped = 0;
     bool skip = false;
 
     for (;;) {
         uint32_t k = input_poll();
         if (bridge_quit_requested()) break;
         if (input_pressed() & BTN_MENU) {
+            present_wait();
             ingame_action_t a = ingame_menu("NES", true);
             if (a == MENU_QUIT) break;
             if (a == MENU_RESET) {
                 /* agnes has no reset(): reload the cartridge, keep battery RAM */
                 static uint8_t keep[BATTERY_SIZE];
                 if (bram) memcpy(keep, bram, BATTERY_SIZE);
-                memset(nes, 0, sizeof(*nes));
+                uint8_t *screen = nes->ppu.screen_buffer;
+                memset(nes, 0, sizeof(*nes));     /* (keeps our screen buffer) */
+                nes->ppu.screen_buffer = screen;
                 memset(nes->ram, 0xff, sizeof(nes->ram));
                 agnes_load_ines_data(nes, rom, size);
                 bram = battery_ram(nes, rom);
@@ -171,21 +253,30 @@ void emu_nes_run(const char *path)
             .up = k & BTN_UP, .down = k & BTN_DOWN, .left = k & BTN_LEFT, .right = k & BTN_RIGHT,
         };
         agnes_set_input(nes, &in, NULL);
-        if (!agnes_next_frame(nes)) {
+        agnes_set_skip_render(skip);
+        if (!agnes_next_frame_fast(nes)) {
+            present_wait();
             message_box("CPU crashed", "(bad opcode)", 0);
             break;
         }
-        if (!skip) {
-            uint16_t *fb = display_fb();
-            blit(nes, fb);
-            if (g_settings.show_fps) draw_fps(fb, pacer.fps);
-            display_present();
+        if (!skip && bufs[1] && present_async(bufs[cur])) {
+            cur ^= 1;
+            nes->ppu.screen_buffer = bufs[cur];
+        } else if (!skip && !bufs[1]) {
+            show_frame(bufs[0]);            /* no PSRAM for a 2nd buffer */
         }
-        skip = pacer_wait(&pacer, NES_FRAME_US) && !skip;
+        /* Game logic always runs at 60 Hz; if we fall behind, the next
+         * frames aren't drawn (up to MAX_SKIP in a row). */
+        bool behind = pacer_wait(&pacer, NES_FRAME_US);
+        skip = behind && skipped < MAX_SKIP;
+        skipped = skip ? skipped + 1 : 0;
     }
 
+    present_wait();
+    agnes_set_skip_render(false);
     if (bram) file_save(sav, bram, BATTERY_SIZE);
-    display_wait();
+    nes->ppu.screen_buffer = bufs[0];   /* agnes_destroy frees this one */
+    free(bufs[1]);
     agnes_destroy(nes);
     free(rom);
 }

@@ -76,6 +76,10 @@ void agnes_dump_state(const agnes_t *agnes, agnes_state_t *out_res);
 bool agnes_restore_state(agnes_t *agnes, const agnes_state_t *state);
 bool agnes_tick(agnes_t *agnes, bool *out_new_frame);
 bool agnes_next_frame(agnes_t *agnes);
+/* Retro Pocket: scanline-based PPU, much faster (see end of agnes.c). */
+bool agnes_next_frame_fast(agnes_t *agnes);
+/* true = next frames won't be shown, skip drawing them (logic still runs). */
+void agnes_set_skip_render(bool skip);
 
 agnes_color_t agnes_get_screen_pixel(const agnes_t *agnes, int x, int y);
 

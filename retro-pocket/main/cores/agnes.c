@@ -34,6 +34,15 @@ THE SOFTWARE.
 
 #include "agnes.h"
 
+#ifndef AGNES_HOT
+#define AGNES_HOT
+#endif
+
+#ifndef AGNES_SCREEN_ALLOC
+#define AGNES_SCREEN_ALLOC(n) malloc(n)
+#define AGNES_SCREEN_FREE(p) free(p)
+#endif
+
 //-----------------------------------------------------------------------------
 // Headers
 //-----------------------------------------------------------------------------
@@ -106,7 +115,9 @@ typedef struct ppu {
     uint8_t nametables[4 * 1024];
     uint8_t palette[32];
 
-    uint8_t screen_buffer[AGNES_SCREEN_HEIGHT * AGNES_SCREEN_WIDTH];
+    /* Retro Pocket: separate allocation (61 KB) so the hot emulator state
+     * stays small enough for fast internal RAM. */
+    uint8_t *screen_buffer;
 
     int scanline;
     int dot;
@@ -521,6 +532,9 @@ agnes_t* agnes_make(void) {
     }
     memset(agnes, 0, sizeof(*agnes));
     memset(agnes->ram, 0xff, sizeof(agnes->ram));
+    agnes->ppu.screen_buffer = (uint8_t *)AGNES_SCREEN_ALLOC(AGNES_SCREEN_HEIGHT * AGNES_SCREEN_WIDTH);
+    if (!agnes->ppu.screen_buffer) { free(agnes); return NULL; }
+    memset(agnes->ppu.screen_buffer, 0, AGNES_SCREEN_HEIGHT * AGNES_SCREEN_WIDTH);
     return agnes;
 }
 
@@ -586,6 +600,7 @@ size_t agnes_state_size() {
 void agnes_dump_state(const agnes_t *agnes, agnes_state_t *out_res) {
     memmove(out_res, agnes, sizeof(agnes_t));
     out_res->agnes.gamepack.data = NULL;
+    out_res->agnes.ppu.screen_buffer = NULL;
     out_res->agnes.cpu.agnes = NULL;
     out_res->agnes.ppu.agnes = NULL;
     switch (out_res->agnes.gamepack.mapper) {
@@ -599,8 +614,10 @@ void agnes_dump_state(const agnes_t *agnes, agnes_state_t *out_res) {
 
 bool agnes_restore_state(agnes_t *agnes, const agnes_state_t *state) {
     const uint8_t *gamepack_data = agnes->gamepack.data;
+    uint8_t *screen = agnes->ppu.screen_buffer;
     memmove(agnes, state, sizeof(agnes_t));
     agnes->gamepack.data = gamepack_data;
+    agnes->ppu.screen_buffer = screen;
     agnes->cpu.agnes = agnes;
     agnes->ppu.agnes = agnes;
     switch (agnes->gamepack.mapper) {
@@ -648,6 +665,8 @@ agnes_color_t agnes_get_screen_pixel(const agnes_t *agnes, int x, int y) {
 }
 
 void agnes_destroy(agnes_t *agnes) {
+    if (!agnes) return;
+    AGNES_SCREEN_FREE(agnes->ppu.screen_buffer);
     free(agnes);
 }
 
@@ -690,7 +709,7 @@ void cpu_init(cpu_t *cpu, agnes_t *agnes) {
     cpu_restore_flags(cpu, 0x24);
 }
 
-int cpu_tick(cpu_t *cpu) {
+AGNES_HOT int cpu_tick(cpu_t *cpu) {
     if (cpu->stall > 0) {
         cpu->stall--;
         return 1;
@@ -814,7 +833,7 @@ void cpu_write8(cpu_t *cpu, uint16_t addr, uint8_t val) {
     }
 }
 
-uint8_t cpu_read8(cpu_t *cpu, uint16_t addr) {
+AGNES_HOT uint8_t cpu_read8(cpu_t *cpu, uint16_t addr) {
     agnes_t *agnes = cpu->agnes;
 
     uint8_t res = 0;
@@ -849,7 +868,7 @@ static uint16_t cpu_read16_indirect_bug(cpu_t *cpu, uint16_t addr) {
     return (hi << 8) | lo;
 }
 
-static uint16_t get_instruction_operand(cpu_t *cpu, addr_mode_t mode, bool *out_pages_differ) {
+AGNES_HOT static uint16_t get_instruction_operand(cpu_t *cpu, addr_mode_t mode, bool *out_pages_differ) {
     *out_pages_differ = false;
     switch (mode) {
         case ADDR_MODE_ABSOLUTE: {
@@ -961,7 +980,9 @@ static unsigned g_palette_addr_map[32] = {
 };
 
 void ppu_init(ppu_t *ppu, agnes_t *agnes) {
+    uint8_t *screen = ppu->screen_buffer;
     memset(ppu, 0, sizeof(ppu_t));
+    ppu->screen_buffer = screen;
     ppu->agnes = agnes;
 
     ppu_write_register(ppu, 0x2000, 0);
@@ -2230,7 +2251,7 @@ bool mapper_init(agnes_t *agnes) {
     }
 }
 
-uint8_t mapper_read(agnes_t *agnes, uint16_t addr) {
+AGNES_HOT uint8_t mapper_read(agnes_t *agnes, uint16_t addr) {
     switch (agnes->gamepack.mapper) {
         case 0: return mapper0_read(&agnes->mapper.m0, addr);
         case 1: return mapper1_read(&agnes->mapper.m1, addr);
@@ -2621,3 +2642,218 @@ static void mapper4_set_offsets(mapper4_t *mapper) {
     }
 }
 //FILE_END
+
+/* ======================================================================
+ * Fast path added for Retro Pocket: a scanline-based PPU.
+ *
+ * The original ppu_tick() above simulates every one of the 89,342 PPU dots
+ * per frame, which is far too slow for an ESP32. agnes_next_frame_fast()
+ * instead runs the CPU for one scanline's worth of cycles and then draws the
+ * whole line at once (background, 8 sprites, sprite-0 hit, MMC3 IRQ clock).
+ * Mid-scanline raster tricks land on the next line; everything else matches.
+ * ====================================================================== */
+
+
+/* The four logical nametables ($2000/$2400/$2800/$2C00) after mirroring. */
+static void fast_nt_ptrs(ppu_t *ppu, uint8_t *nt[4])
+{
+    for (int i = 0; i < 4; i++) nt[i] = ppu->nametables + mirror_address(ppu, 0x2000 + i * 0x400);
+}
+
+static void fast_inc_vert(uint16_t *v)
+{
+    if ((*v & 0x7000) != 0x7000) { *v += 0x1000; return; }
+    *v &= ~0x7000;
+    unsigned cy = (*v >> 5) & 0x1f;
+    if (cy == 29) { cy = 0; *v ^= 0x0800; }
+    else if (cy == 31) cy = 0;
+    else cy++;
+    *v = (*v & ~0x03e0) | (cy << 5);
+}
+
+/* s_spread[b] puts bit 7..0 of b into bytes 0..7 (as 0/1), so a tile row is
+ * expanded to 8 pixels with two lookups instead of 16 bit extractions. */
+static uint64_t s_spread[256];
+static uint64_t s_spread_rev[256];   /* same, horizontally flipped (sprites) */
+
+static void fast_init_tables(void)
+{
+    if (s_spread[255]) return;
+    for (int b = 0; b < 256; b++) {
+        uint64_t v = 0, r = 0;
+        for (int i = 0; i < 8; i++) {
+            if (b & (0x80 >> i)) v |= (uint64_t)1 << (i * 8);
+            if (b & (0x01 << i)) r |= (uint64_t)1 << (i * 8);
+        }
+        s_spread[b] = v;
+        s_spread_rev[b] = r;
+    }
+}
+
+#define BYTES_x8(b) ((uint64_t)(b) * 0x0101010101010101ULL)
+
+/* Set by the front-end on frames it won't display: lines are only drawn
+ * where sprite 0 could need the background (for the sprite-0 hit flag). */
+static bool s_fast_skip;
+void agnes_set_skip_render(bool skip) { s_fast_skip = skip; }
+
+AGNES_HOT static void fast_render_line(ppu_t *ppu, int y)
+{
+    if (s_fast_skip) {
+        const sprite_t *s0 = (const sprite_t *)ppu->oam_data;
+        int h = ppu->ctrl.use_8x16_sprites ? 16 : 8;
+        unsigned row = (unsigned)(y - s0->y_pos - 1);
+        if (!(ppu->masks.show_sprites && ppu->masks.show_background && row < (unsigned)h &&
+              !ppu->status.sprite_zero_hit))
+            return;
+    }
+    uint8_t bgbuf[264 + 8] __attribute__((aligned(8)));
+    uint8_t sp[256], sp_behind[256];
+    uint8_t *out = ppu->screen_buffer + y * AGNES_SCREEN_WIDTH;
+    agnes_t *agnes = ppu->agnes;
+    const uint8_t *bg = bgbuf + ppu->regs.x;   /* fine X scroll */
+    bool any_sprite = false;
+
+    /* ---- background ---- */
+    if (ppu->masks.show_background) {
+        uint8_t *nt[4];
+        fast_nt_ptrs(ppu, nt);
+        uint16_t v = ppu->regs.v;
+        int fine_y = (v >> 12) & 7;
+        uint16_t table = ppu->ctrl.bg_table_addr + fine_y;
+        uint64_t *dst = (uint64_t *)bgbuf;
+        for (int t = 0; t < 33; t++) {
+            const uint8_t *n = nt[(v >> 10) & 3];
+            uint8_t tile = n[v & 0x3ff];
+            uint8_t at = n[0x3C0 | ((v >> 4) & 0x38) | ((v >> 2) & 0x07)];
+            at >>= ((v >> 4) & 4) | (v & 2);
+            uint16_t pa = table + (tile << 4);
+            uint64_t px = s_spread[mapper_read(agnes, pa)] | (s_spread[mapper_read(agnes, pa + 8)] << 1);
+            /* bytes with a non-zero pixel get the palette bits */
+            uint64_t nz = (px | (px >> 1)) & 0x0101010101010101ULL;
+            dst[t] = px | (nz * ((at & 3) << 2));
+            if ((v & 0x1f) == 31) { v &= ~0x1f; v ^= 0x0400; } else v++;
+        }
+        if (!ppu->masks.show_leftmost_bg) memset((uint8_t *)bg, 0, 8);
+    } else {
+        memset(bgbuf, 0, sizeof(bgbuf));
+    }
+
+    /* ---- sprites: first 8 on this line, lower OAM index wins ---- */
+    int sprite0_x = -1;
+    uint8_t sprite0_px[8];
+    if (ppu->masks.show_sprites) {
+        int h = ppu->ctrl.use_8x16_sprites ? 16 : 8, found = 0;
+        const sprite_t *sprites = (const sprite_t *)ppu->oam_data;
+        int list[8];
+        for (int i = 0; i < 64; i++) {
+            unsigned row = (unsigned)(y - sprites[i].y_pos - 1);
+            if (row >= (unsigned)h || sprites[i].y_pos > 0xef) continue;
+            if (found == 8) { ppu->status.sprite_overflow = true; break; }
+            list[found++] = i;
+        }
+        if (found) {
+            any_sprite = true;
+            memset(sp, 0, sizeof(sp));
+        }
+        for (int k = found - 1; k >= 0; k--) {   /* draw back to front */
+            const sprite_t *s = &sprites[list[k]];
+            int row = y - s->y_pos - 1;
+            if (s->attrs & 0x80) row = h - 1 - row;
+            uint16_t table = ppu->ctrl.sprite_table_addr;
+            uint8_t tile = s->tile_num;
+            if (h == 16) {
+                table = (tile & 1) ? 0x1000 : 0x0000;
+                tile &= 0xfe;
+                if (row >= 8) { tile++; row -= 8; }
+            }
+            uint16_t pa = table + (tile << 4) + row;
+            const uint64_t *spread = (s->attrs & 0x40) ? s_spread_rev : s_spread;
+            uint64_t px64 = spread[mapper_read(agnes, pa)] | (spread[mapper_read(agnes, pa + 8)] << 1);
+            uint8_t px8[8];
+            memcpy(px8, &px64, 8);
+            uint8_t pal = 0x10 | ((s->attrs & 3) << 2), behind = (s->attrs & 0x20) != 0;
+            if (list[k] == 0) { sprite0_x = s->x_pos; memcpy(sprite0_px, px8, 8); }
+            if (!px64) continue;
+            for (int b = 0; b < 8; b++) {
+                int x = s->x_pos + b;
+                if (x > 255) break;
+                if (px8[b]) { sp[x] = pal | px8[b]; sp_behind[x] = behind; }
+            }
+        }
+        if (any_sprite && !ppu->masks.show_leftmost_sprites) memset(sp, 0, 8);
+    }
+
+    /* ---- sprite 0 hit ---- */
+    if (sprite0_x >= 0 && ppu->masks.show_background && !ppu->status.sprite_zero_hit) {
+        for (int b = 0; b < 8; b++) {
+            int x = sprite0_x + b;
+            if (x >= 255) break;
+            if (x < 8 && (!ppu->masks.show_leftmost_bg || !ppu->masks.show_leftmost_sprites)) continue;
+            if (sprite0_px[b] && bg[x]) { ppu->status.sprite_zero_hit = true; break; }
+        }
+    }
+
+    /* ---- compose through the palette ---- */
+    uint8_t map[32];
+    for (int i = 0; i < 32; i++) map[i] = ppu->palette[g_palette_addr_map[i]];
+    map[0] = ppu->palette[0];   /* transparent background = backdrop */
+    if (!any_sprite) {
+        for (int x = 0; x < 256; x++) out[x] = map[bg[x]];
+    } else {
+        for (int x = 0; x < 256; x++) {
+            uint8_t b = bg[x], s = sp[x];
+            out[x] = (s && (!b || !sp_behind[x])) ? map[s] : map[b];
+        }
+    }
+    if (!ppu->masks.show_leftmost_bg && !ppu->masks.show_leftmost_sprites) memset(out, 63, 8);
+}
+
+/* Runs the CPU for one scanline (341 PPU dots = 113.67 CPU cycles). */
+AGNES_HOT static bool fast_run_cpu(agnes_t *agnes, int *debt)
+{
+    *debt += 341;
+    while (*debt > 0) {
+        cpu_t *cpu = &agnes->cpu;
+        int c;
+        if (cpu->stall > 0) { c = cpu->stall; cpu->stall = 0; }  /* OAM DMA in one go */
+        else if (!(c = cpu_tick(cpu))) return false;
+        *debt -= c * 3;
+    }
+    return true;
+}
+
+AGNES_HOT bool agnes_next_frame_fast(agnes_t *agnes)
+{
+    ppu_t *ppu = &agnes->ppu;
+    static int debt;
+    fast_init_tables();
+    for (int line = 0; line < 262; line++) {
+        bool rendering = ppu->masks.show_background || ppu->masks.show_sprites;
+        if (line < 240) {
+            if (rendering) {
+                fast_render_line(ppu, line);
+                fast_inc_vert(&ppu->regs.v);                                    /* dot 256 */
+                ppu->regs.v = (ppu->regs.v & 0xfbe0) | (ppu->regs.t & 0x041f);  /* dot 257 */
+            } else if (!s_fast_skip) {
+                memset(ppu->screen_buffer + line * AGNES_SCREEN_WIDTH, ppu->palette[0], AGNES_SCREEN_WIDTH);
+            }
+        } else if (line == 241) {
+            ppu->status.in_vblank = true;
+            if (ppu->ctrl.nmi_enabled) cpu_trigger_nmi(&agnes->cpu);
+        } else if (line == 261) {
+            ppu->status.sprite_overflow = false;
+            ppu->status.sprite_zero_hit = false;
+            ppu->status.in_vblank = false;
+            if (rendering) {
+                ppu->regs.v = (ppu->regs.v & 0xfbe0) | (ppu->regs.t & 0x041f);  /* dot 257 */
+                ppu->regs.v = (ppu->regs.v & 0x841f) | (ppu->regs.t & 0x7be0);  /* dots 280-304 */
+            }
+        }
+        /* MMC3 counts scanlines through PPU A12; once per rendered line */
+        if ((line < 240 || line == 261) && ppu->masks.show_background && ppu->masks.show_sprites)
+            mapper_pa12_rising_edge(agnes);
+        if (!fast_run_cpu(agnes, &debt)) return false;
+    }
+    return true;
+}

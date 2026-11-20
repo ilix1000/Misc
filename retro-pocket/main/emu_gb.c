@@ -17,6 +17,7 @@
 #define LCD_HEIGHT_GB 144
 
 #include "emulators.h"
+#include "romscan.h"
 #include "system.h"
 #include "display.h"
 #include "gfx.h"
@@ -159,7 +160,7 @@ static bool state_load(struct gb_s *gb, const char *rom_path)
 void emu_gb_run(const char *path)
 {
     memset(&s, 0, sizeof(s));
-    s.rom = file_load(path, &s.rom_size);
+    s.rom = rom_load(path, &s.rom_size);
     if (!s.rom) { message_box("Can't read ROM", NULL, 0); return; }
 
     struct gb_s *gb = heap_caps_malloc(sizeof(struct gb_s), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);

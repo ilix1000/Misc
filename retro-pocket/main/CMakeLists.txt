@@ -1,5 +1,5 @@
 idf_component_register(
-    SRCS "main.c" "display.c" "input.c" "gfx.c" "system.c" "storage.c" "launcher.c"
+    SRCS "main.c" "display.c" "input.c" "gfx.c" "system.c" "storage.c" "launcher.c" "romscan.c" "unzip.c"
          "emu_gb.c" "emu_nes.c" "game_maze.c"
     INCLUDE_DIRS "."
     REQUIRES driver esp_adc esp_lcd fatfs sdmmc nvs_flash esp_timer

@@ -73,8 +73,8 @@ bool sd_init(void)
         return false;
     }
     sdmmc_card_print_info(stdout, card);
-    const char *dirs[] = { DIR_ROMS, DIR_ROMS "/nes", DIR_ROMS "/gb",
-                           DIR_SAVES, DIR_SAVES "/nes", DIR_SAVES "/gb" };
+    /* Games can go anywhere on the card; /roms is just a suggestion. */
+    const char *dirs[] = { DIR_ROMS, DIR_SAVES, DIR_SAVES "/nes", DIR_SAVES "/gb" };
     for (int i = 0; i < sizeof(dirs) / sizeof(dirs[0]); i++) mkdir(dirs[i], 0777);
     s_sd_ok = true;
     return true;

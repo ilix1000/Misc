@@ -1,10 +1,11 @@
 # Retro Pocket
 
-A small Retro-Go style firmware for an **ESP32-S3** handheld. When it boots it
-shows a menu, you pick a game from the SD card, and you play it on a 1.77"
-ST7735 screen with 4 buttons and an analog joystick.
+A small Retro-Go style firmware for an **ESP32-S3** handheld. Copy downloaded
+games (`.zip`, `.nes`, `.gb`, `.gbc`) anywhere on the SD card. At boot it scans
+the card, sorts every game it finds under NES or Game Boy, and you pick one and
+play it on a 1.77" ST7735 screen with 4 buttons and an analog joystick.
 
-![Menu, Game Boy test ROM, Maze Runner 3D, pause menu](docs/screens.png)
+![Game list from zips, Game Boy test ROM, Maze Runner 3D, pause menu](docs/screens.png)
 
 *Screenshots from the PC simulator, at 2x.*
 
@@ -71,8 +72,8 @@ The buttons use the chip's internal pull-ups, so you don't need resistors.
 |-------|---------|--------|
 | Menu  | Stick left / right | Switch tab: NES, Game Boy, Built-in, Settings |
 |       | Stick up / down    | Pick a game |
-|       | A / START          | Play, or open a folder |
-|       | B                  | Go up a folder |
+|       | A / START          | Play |
+|       | SELECT             | Jump to the next letter (A, B, C...) |
 | Settings | A / B           | Change value up / down |
 | In game | Stick           | D-pad |
 |       | A, B, START, SELECT | Same as the console |
@@ -82,15 +83,25 @@ The buttons use the chip's internal pull-ups, so you don't need resistors.
 |       | B (hold)           | Strafe instead of turning |
 |       | SELECT (hold)      | Show map |
 
-## SD card layout
+## Adding games
 
-The folders are created on first boot. Subfolders are fine.
+1. Download a game. A `.zip` is fine, **no need to unzip it**.
+2. Copy it to the SD card, **in any folder** (the root, `/roms`, `/Downloads/whatever`...).
+3. Put the card in and power on. The boot screen says "Looking for games..." and
+   then every game shows up under the right tab, sorted A to Z.
 
-```
-/roms/nes/   *.nes
-/roms/gb/    *.gb  *.gbc
-/saves/      battery saves (.sav) and save states (.state), created automatically
-```
+Details:
+
+- A zip counts as a game if it has a `.nes`, `.gb`, `.gbc` or `.dmg` file inside,
+  even in a subfolder of the zip and next to readme files. The game shows up
+  under the **zip's** name.
+- `.7z` and `.rar` aren't supported. Re-zip them as `.zip` on your computer.
+- The first boot with lots of new zips takes a few seconds while each one is
+  opened. What's inside each zip is remembered in `/saves/zipcache.txt`, so
+  after that only new or changed zips are checked.
+- Added games while it's on? *Settings → Rescan SD card*.
+- Folders up to 6 levels deep are searched. Hidden folders, `System Volume Information` and `/saves` are skipped.
+- Saves go in `/saves/nes/` and `/saves/gb/`, named after the game.
 
 Only use ROMs you made or have the right to use.
 
@@ -140,8 +151,8 @@ testing changes without flashing:
 
 ```sh
 cd sim && ./build.sh
-mkdir -p simsd/roms/gb && cp some.gb simsd/roms/gb/
-SIM_SCRIPT=demo.txt ./retro-pocket-sim     # writes the shots/*.ppm listed in the script
+mkdir -p simsd shots && cp some-game.zip simsd/     # simsd/ acts as the SD card
+SIM_SCRIPT=demo.txt ./retro-pocket-sim             # writes the shots/*.ppm listed in the script
 ```
 
 Each script line is `<frames to wait> <KEYS | shot:NAME | quit>`. Keys are joined
@@ -153,7 +164,9 @@ with `+`, e.g. `UP+A`, and `-` releases everything.
 main/board.h       pins and panel options
 main/display.c     ST7735 driver, double-buffered DMA frames
 main/input.c       buttons and joystick to D-pad, with auto-repeat
-main/launcher.c    boot menu, SD browser, settings
+main/launcher.c    boot menu, game lists, settings
+main/romscan.c     finds games anywhere on the SD card, zip cache, rom_load()
+main/unzip.c       small .zip reader and DEFLATE decoder
 main/system.c      pause menu, message boxes, frame pacing, file helpers
 main/storage.c     SD card mount, settings in flash (NVS)
 main/emu_gb.c      Game Boy front-end
@@ -163,7 +176,7 @@ main/cores/        third-party emulator cores (MIT)
 tools/gen_font.py  generates the 5x7 UI font
 ```
 
-To add a system, write a `void my_run(const char *path)` and add a row to `tabs[]` in `launcher.c`.
+To add a system: write a `void my_run(const char *path)` that loads with `rom_load()`, add a `SYS_` value and its extensions in `romscan.c`, and add a row to `tabs[]` in `launcher.c`.
 
 ## Ideas / next steps
 

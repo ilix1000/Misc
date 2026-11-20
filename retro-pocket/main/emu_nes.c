@@ -10,6 +10,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "emulators.h"
+#include "romscan.h"
 #include "system.h"
 #include "display.h"
 #include "gfx.h"
@@ -96,7 +97,7 @@ static bool state_io(agnes_t *nes, const char *rom_path, bool save)
 void emu_nes_run(const char *path)
 {
     size_t size;
-    uint8_t *rom = file_load(path, &size);
+    uint8_t *rom = rom_load(path, &size);
     if (!rom) { message_box("Can't read ROM", NULL, 0); return; }
 
     agnes_t *nes = agnes_make();

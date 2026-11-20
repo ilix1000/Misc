@@ -12,6 +12,8 @@
 #include "input.h"
 #include "system.h"
 #include "launcher.h"
+#include "lock.h"
+#include "wifi.h"
 
 /* ---- clock ---- */
 static int64_t s_us;
@@ -122,7 +124,7 @@ void input_joystick(float *x, float *y)
 }
 
 /* ---- storage ---- */
-settings_t g_settings = { .brightness = 80, .gb_palette = 0, .nes_scale = 0, .show_fps = 1 };
+settings_t g_settings = { .brightness = 80, .gb_palette = 0, .nes_scale = 0, .show_fps = 1, .ui_anim = 1 };
 void settings_load(void) {}
 void settings_save(void) {}
 bool sd_ok(void) { return true; }
@@ -136,6 +138,8 @@ bool sd_init(void)
 int main(void)
 {
     srand(1);
+    lib_lock_init();
+    wifi_start();
     display_init();
     if (getenv("SIM_ROT")) g_settings.rotation = atoi(getenv("SIM_ROT"));
     display_set_rotation(g_settings.rotation, false);

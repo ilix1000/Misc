@@ -12,6 +12,7 @@
 #include "emulators.h"
 #include "romscan.h"
 #include "system.h"
+#include "bridge.h"
 #include "display.h"
 #include "gfx.h"
 #include "input.h"
@@ -24,8 +25,11 @@
  * internal RAM instead of PSRAM. */
 static void *agnes_alloc(size_t n)
 {
-    void *p = heap_caps_malloc(n, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
-    return p ? p : malloc(n);
+    /* ...but only if Wi-Fi and the web server keep enough internal RAM. */
+    void *p = NULL;
+    if (heap_caps_get_free_size(MALLOC_CAP_INTERNAL) > n + 64 * 1024)
+        p = heap_caps_malloc(n, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    return p ? p : heap_caps_malloc(n, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
 }
 #define malloc(n) agnes_alloc(n)
 #include "cores/agnes.c"
@@ -140,6 +144,7 @@ void emu_nes_run(const char *path)
 
     for (;;) {
         uint32_t k = input_poll();
+        if (bridge_quit_requested()) break;
         if (input_pressed() & BTN_MENU) {
             ingame_action_t a = ingame_menu("NES", true);
             if (a == MENU_QUIT) break;

@@ -12,6 +12,7 @@
 #include "unzip.h"
 #include "system.h"
 #include "board.h"
+#include "lock.h"
 #include "esp_heap_caps.h"
 #include "esp_timer.h"
 #include "esp_log.h"
@@ -148,7 +149,7 @@ static void add_game(sys_t sys, const char *path, const char *fname)
     const char *p = pool_dup(path, strlen(path));
     const char *n = pool_dup(fname, nlen);
     if (!p || !n) return;
-    s_games[sys][s_count[sys]++] = (game_t){ p, n };
+    s_games[sys][s_count[sys]++] = (game_t){ p, n, sys };
     s_found++;
 }
 
@@ -216,6 +217,143 @@ static int game_cmp(const void *a, const void *b)
     return c ? c : strcmp(x->path, y->path);
 }
 
+/* ---------------- favourites & recently played ---------------- */
+
+#define MAX_FAVS    200
+#define MAX_RECENT  20
+#define FAV_FILE    DIR_SAVES "/favorites.txt"
+#define RECENT_FILE DIR_SAVES "/recent.txt"
+
+typedef struct {
+    char (*paths)[320];
+    int count, max;
+    const char *file;
+    const game_t **resolved; /* entries still on the card */
+    int resolved_count;
+} plist_t;
+
+static plist_t s_favs = { .max = MAX_FAVS, .file = FAV_FILE };
+static plist_t s_recent = { .max = MAX_RECENT, .file = RECENT_FILE };
+
+const game_t *games_find(const char *path)
+{
+    for (int s = 1; s < SYS_COUNT; s++)
+        for (int i = 0; i < s_count[s]; i++)
+            if (!strcmp(s_games[s][i].path, path)) return &s_games[s][i];
+    return NULL;
+}
+
+static bool plist_alloc(plist_t *l)
+{
+    if (!l->paths) {
+        l->paths = heap_caps_malloc(sizeof(*l->paths) * l->max, MALLOC_CAP_SPIRAM);
+        l->resolved = heap_caps_malloc(sizeof(game_t *) * l->max, MALLOC_CAP_SPIRAM);
+    }
+    return l->paths && l->resolved;
+}
+
+static void plist_resolve(plist_t *l)
+{
+    l->resolved_count = 0;
+    for (int i = 0; i < l->count; i++) {
+        const game_t *g = games_find(l->paths[i]);
+        if (g) l->resolved[l->resolved_count++] = g;
+    }
+}
+
+static void plist_load(plist_t *l)
+{
+    if (!plist_alloc(l)) return;
+    l->count = 0;
+    FILE *f = fopen(l->file, "r");
+    if (f) {
+        while (l->count < l->max && fgets(l->paths[l->count], sizeof(l->paths[0]), f)) {
+            l->paths[l->count][strcspn(l->paths[l->count], "\r\n")] = 0;
+            if (l->paths[l->count][0]) l->count++;
+        }
+        fclose(f);
+    }
+    plist_resolve(l);
+}
+
+static void plist_save(plist_t *l)
+{
+    FILE *f = fopen(l->file, "w");
+    if (!f) return;
+    for (int i = 0; i < l->count; i++) fprintf(f, "%s\n", l->paths[i]);
+    fclose(f);
+}
+
+static int plist_index(plist_t *l, const char *path)
+{
+    for (int i = 0; i < l->count; i++)
+        if (!strcmp(l->paths[i], path)) return i;
+    return -1;
+}
+
+static void plist_remove(plist_t *l, int i)
+{
+    memmove(l->paths[i], l->paths[i + 1], sizeof(l->paths[0]) * (l->count - i - 1));
+    l->count--;
+}
+
+static void lists_load(void)
+{
+    plist_load(&s_favs);
+    plist_load(&s_recent);
+}
+
+bool lib_is_fav(const char *path)
+{
+    lib_lock();
+    bool r = s_favs.paths && plist_index(&s_favs, path) >= 0;
+    lib_unlock();
+    return r;
+}
+
+void lib_set_fav(const char *path, bool fav)
+{
+    lib_lock();
+    if (plist_alloc(&s_favs) && strlen(path) < sizeof(s_favs.paths[0])) {
+        int i = plist_index(&s_favs, path);
+        if (fav && i < 0 && s_favs.count < s_favs.max) strcpy(s_favs.paths[s_favs.count++], path);
+        if (!fav && i >= 0) plist_remove(&s_favs, i);
+        plist_save(&s_favs);
+        plist_resolve(&s_favs);
+    }
+    lib_unlock();
+}
+
+void lib_add_recent(const char *path)
+{
+    lib_lock();
+    if (plist_alloc(&s_recent) && strlen(path) < sizeof(s_recent.paths[0])) {
+        int i = plist_index(&s_recent, path);
+        if (i >= 0) plist_remove(&s_recent, i);
+        if (s_recent.count == s_recent.max) s_recent.count--;
+        memmove(s_recent.paths[1], s_recent.paths[0], sizeof(s_recent.paths[0]) * s_recent.count);
+        strcpy(s_recent.paths[0], path);
+        s_recent.count++;
+        plist_save(&s_recent);
+        plist_resolve(&s_recent);
+    }
+    lib_unlock();
+}
+
+int lib_fav_count(void) { return s_favs.resolved_count; }
+int lib_recent_count(void) { return s_recent.resolved_count; }
+const game_t *lib_fav_get(int i) { return i >= 0 && i < s_favs.resolved_count ? s_favs.resolved[i] : NULL; }
+const game_t *lib_recent_get(int i) { return i >= 0 && i < s_recent.resolved_count ? s_recent.resolved[i] : NULL; }
+
+const char *sys_name(int sys)
+{
+    switch (sys) {
+        case SYS_NES: return "NES";
+        case SYS_GB: return "Game Boy";
+        default: return "?";
+    }
+}
+
 void games_scan(scan_progress_fn progress)
 {
     if (!s_pool) {
@@ -224,8 +362,11 @@ void games_scan(scan_progress_fn progress)
             s_games[s] = heap_caps_malloc(MAX_GAMES * sizeof(game_t), MALLOC_CAP_SPIRAM);
         if (!s_pool) return;
     }
+    lib_lock();
     s_pool_used = 0;
     memset(s_count, 0, sizeof(s_count));
+    s_favs.resolved_count = s_recent.resolved_count = 0; /* they point into the old lists */
+    lib_unlock();
     s_zc_count = s_zc_sorted = 0;
     s_zc_dirty = false;
     s_files_seen = s_found = 0;
@@ -233,6 +374,7 @@ void games_scan(scan_progress_fn progress)
     s_last_progress = 0;
     if (!sd_ok()) return;
 
+    lib_lock();
     int64_t t0 = esp_timer_get_time();
     zc_load();
     int cached = s_zc_count;
@@ -247,6 +389,8 @@ void games_scan(scan_progress_fn progress)
     if (s_zc_dirty) zc_save();
     ESP_LOGI(TAG, "%d files, %d NES, %d GB in %d ms", s_files_seen, s_count[SYS_NES],
              s_count[SYS_GB], (int)((esp_timer_get_time() - t0) / 1000));
+    lists_load();
+    lib_unlock();
 }
 
 int games_count(sys_t sys)

@@ -19,6 +19,7 @@
 #include "emulators.h"
 #include "romscan.h"
 #include "system.h"
+#include "bridge.h"
 #include "display.h"
 #include "gfx.h"
 #include "input.h"
@@ -245,6 +246,7 @@ void emu_gb_run(const char *path)
 
     for (;;) {
         uint32_t keys = input_poll();
+        if (bridge_quit_requested()) break;   /* web UI: exit / switch game */
         if (input_pressed() & BTN_MENU) {
             ingame_action_t a = ingame_menu(title[0] ? title : "Game Boy", true);
             if (a == MENU_QUIT) break;

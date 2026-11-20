@@ -17,7 +17,7 @@ static const char *TAG = "storage";
 
 /* ---------------- settings (NVS) ---------------- */
 
-settings_t g_settings = { .brightness = 80, .gb_palette = 0, .nes_scale = 0, .show_fps = 0 };
+settings_t g_settings = { .brightness = 80, .gb_palette = 0, .nes_scale = 0, .show_fps = 0, .ui_anim = 1 };
 
 void settings_load(void)
 {

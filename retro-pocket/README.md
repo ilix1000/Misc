@@ -5,9 +5,14 @@ games (`.zip`, `.nes`, `.gb`, `.gbc`) anywhere on the SD card. At boot it scans
 the card, sorts every game it finds under NES or Game Boy, and you pick one and
 play it on a 1.77" ST7735 screen with 4 buttons and an analog joystick.
 
-![Game list from zips, Game Boy test ROM, Maze Runner 3D, pause menu](docs/screens.png)
+It also has **Wi-Fi**: a web UI on your phone (remote control with live screen,
+game uploads, file manager, settings), and **firmware updates over Wi-Fi**, so
+you only flash it by USB once.
 
-*Screenshots from the PC simulator, at 2x.*
+![Home screen, Wi-Fi setup, keyboard, game list](docs/screens.png)
+![Web UI on a phone](docs/web.png)
+
+*Device screenshots from the PC simulator at 2x; web UI from the mock device.*
 
 | System      | Core | Notes |
 |-------------|------|-------|
@@ -70,11 +75,16 @@ The buttons use the chip's internal pull-ups, so you don't need resistors.
 
 | Where | Control | Action |
 |-------|---------|--------|
-| Menu  | Stick left / right | Switch tab: NES, Game Boy, Built-in, Settings |
-|       | Stick up / down    | Pick a game |
-|       | A / START          | Play |
+| Home  | Stick left / right | Slide between Recent, Favorites, NES, Game Boy, Built-in, Wi-Fi, Settings |
+|       | A / START          | Open |
+| Lists | Stick up / down    | Pick a game |
+|       | A                  | Play |
+|       | START              | Add to / remove from Favorites |
 |       | SELECT             | Jump to the next letter (A, B, C...) |
-| Settings | A / B           | Change value up / down (Screen, Stick, colors...) |
+|       | B                  | Back |
+| Settings | Stick left / right (or A) | Change the value |
+| Keyboard | Stick + A       | Type a key |
+|       | B / SELECT / START | Delete / Shift / Done (click stick = cancel) |
 | In game | Stick           | D-pad |
 |       | A, B, START, SELECT | Same as the console |
 |       | **Click stick**    | Pause menu: Resume, Save state, Load state, Reset, Quit |
@@ -82,6 +92,49 @@ The buttons use the chip's internal pull-ups, so you don't need resistors.
 |       | A (hold)           | Sprint |
 |       | B (hold)           | Strafe instead of turning |
 |       | SELECT (hold)      | Show map |
+
+## Wi-Fi and the web UI
+
+**Getting online the first time:** with no network saved, the device opens its own
+hotspot **RetroPocket-XXXX** (password `retropocket`). Then either:
+
+- **On the device:** *Wi-Fi → Find networks*, pick yours, type the password on the on-screen keyboard, or
+- **From your phone:** join the hotspot (or scan the QR code in *Wi-Fi → Show QR code*),
+  open **http://192.168.4.1**, go to the *Wi-Fi* tab, pick your network and type the password.
+
+Once it's connected, the Wi-Fi card on the home screen shows its IP address. Open
+`http://<that IP>` from any phone or PC on the same network. If the saved network
+can't be reached for 20 seconds, the hotspot comes back automatically so you're never locked out.
+
+**What the web UI can do:**
+
+| Tab | |
+|-----|---|
+| **Play** | Live view of the screen, touch gamepad (multi-touch), keyboard and USB/Bluetooth gamepad support, exit game, screenshot |
+| **Games** | Search, filter by system / favorites / recent, start a game on the device, star favorites, **upload games** (drag & drop) |
+| **Files** | Browse the whole SD card, upload, download, rename, delete, new folder (back up your saves!) |
+| **Wi-Fi** | Scan and join networks, hotspot on/off, forget network |
+| **Settings** | Everything from the device's settings, applied instantly |
+| **System** | Version, IP, uptime, memory, SD usage, **firmware update**, restart |
+
+The web UI has no password, so anyone on the same Wi-Fi can use it. Only use it on networks you trust.
+
+## Firmware updates over Wi-Fi
+
+After the first USB flash of v2.0, you never need the cable again:
+
+- **One tap:** *Settings → Update* on the device, or *System → Check / Install* in the
+  web UI. It downloads `firmware/ota/` from GitHub, shows a progress bar and restarts.
+- **Upload:** *System → upload a firmware file* in the web UI, using `firmware/ota/retro-pocket.bin`.
+
+New firmware has to boot to the menu once to be kept. If it crashes before that,
+the device rolls back to the previous version automatically.
+
+**Private repo?** GitHub won't hand files to anonymous devices from a private repo.
+Either make the repo public, or create a fine-grained token (GitHub → Settings →
+Developer settings → Fine-grained tokens) with **read-only "Contents"** access to just
+this repo, and paste it in *System → Update source → Token* in the web UI. The update
+source (repo, branch, folder) can be changed there too.
 
 ## Adding games
 
@@ -108,7 +161,9 @@ Only use ROMs you made or have the right to use.
 ## Flashing the prebuilt firmware (easiest)
 
 [`firmware/retro-pocket-esp32s3.bin`](firmware/retro-pocket-esp32s3.bin) is built for the
-default pins above and octal PSRAM (N8R8 / N16R8). Flash it at offset **0x0**:
+default pins above and octal PSRAM (N8R8 / N16R8). Flash it at offset **0x0**. v2.0
+changes the flash layout, so this USB flash is needed **once**; after that, use Wi-Fi updates.
+Settings are reset by this flash; your games and saves on the SD card are kept.
 
 - in a browser: open <https://espressif.github.io/esptool-js/>, connect, set address `0x0`, pick the file, Program
 - or from a terminal: `esptool.py --chip esp32s3 write_flash 0x0 firmware/retro-pocket-esp32s3.bin`
@@ -163,7 +218,11 @@ cd sim && ./build.sh
 mkdir -p simsd shots && cp some-game.zip simsd/     # simsd/ acts as the SD card
 SIM_SCRIPT=demo.txt ./retro-pocket-sim             # writes the shots/*.ppm listed in the script
 SIM_ROT=1 SIM_SCRIPT=portrait.txt ./retro-pocket-sim   # same, in portrait
+SIM_WIFI=ap SIM_SCRIPT=wifi-tour.txt ./retro-pocket-sim # Wi-Fi setup flow (SIM_WIFI=sta|ap|off)
 ```
+
+The web UI can be developed against a fake device: `node tools/webmock/server.js 8080`
+then open http://localhost:8080.
 
 Each script line is `<frames to wait> <KEYS | shot:NAME | quit>`. Keys are joined
 with `+`, e.g. `UP+A`, and `-` releases everything.
@@ -172,21 +231,32 @@ with `+`, e.g. `UP+A`, and `-` releases everything.
 
 ```
 main/board.h       pins and panel options
-main/display.c     ST7735 driver, double-buffered DMA frames
-main/input.c       buttons and joystick to D-pad, with auto-repeat
-main/launcher.c    boot menu, game lists, settings
-main/romscan.c     finds games anywhere on the SD card, zip cache, rom_load()
+main/version.h     firmware version (bump it for every release)
+main/display.c     ST7735 driver, double-buffered DMA frames, rotation
+main/input.c       buttons + joystick (+ web remote) to D-pad, with auto-repeat
+main/launcher.c    home carousel, game lists, settings, Wi-Fi screens, transitions
+main/ui.c          animation helpers, toasts, status bar, background, keyboard
+main/gfx.c         drawing: rects, alpha, gradients, text, icons, QR codes
+main/romscan.c     finds games anywhere on the SD card, zip cache, favorites, recent
 main/unzip.c       small .zip reader and DEFLATE decoder
+main/wifi.c        station + hotspot, scanning, auto fallback
+main/webui.c       web server, JSON API, WebSocket remote control + screen
+main/web/index.html  the web UI (embedded in the firmware)
+main/ota.c         updates from GitHub or upload, rollback safety
+main/bridge.c      requests between the web server and the game/menu task
 main/system.c      pause menu, message boxes, frame pacing, file helpers
 main/storage.c     SD card mount, settings in flash (NVS)
 main/emu_gb.c      Game Boy front-end
 main/emu_nes.c     NES front-end
 main/game_maze.c   Maze Runner 3D
-main/cores/        third-party emulator cores (MIT)
+main/cores/        third-party code: Peanut-GB, agnes, qrcodegen (all MIT)
 tools/gen_font.py  generates the 5x7 UI font
+tools/gen_icons.py generates the pixel-art icons
+tools/release.sh   builds a release into firmware/ (bump main/version.h first)
+tools/webmock/     fake device for working on the web UI on a PC
 ```
 
-To add a system: write a `void my_run(const char *path)` that loads with `rom_load()`, add a `SYS_` value and its extensions in `romscan.c`, and add a row to `tabs[]` in `launcher.c`.
+To add a system: write a `void my_run(const char *path)` that loads with `rom_load()`, add a `SYS_` value and its extensions in `romscan.c`, and add a card in `launcher.c`.
 
 ## Ideas / next steps
 

@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#11131f">
+<title>Retro Pocket</title>
+<style>
+:root{--bg:#0d0f1a;--panel:#171a2b;--panel2:#20243a;--line:#2c3150;--text:#e8eaf2;--dim:#8a90ad;
+--accent:#ffc428;--blue:#4a5fe0;--red:#e64646;--green:#4fc878;--r:14px}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+body{padding-bottom:calc(68px + env(safe-area-inset-bottom))}
+header{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;padding:12px 16px;
+background:rgba(13,15,26,.9);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+header h1{font-size:17px;margin:0;letter-spacing:.5px}
+header h1 b{color:var(--accent)}
+#status{margin-left:auto;font-size:12px;color:var(--dim);display:flex;gap:8px;align-items:center}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--red);display:inline-block}
+.dot.on{background:var(--green)}
+main{max-width:760px;margin:0 auto;padding:16px}
+section{display:none;animation:in .25s ease}
+section.on{display:block}
+@keyframes in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--dim);margin:22px 4px 8px}
+h2:first-child{margin-top:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:12px}
+.row{display:flex;align-items:center;gap:10px}
+.grow{flex:1;min-width:0}
+.ell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.muted{color:var(--dim);font-size:13px}
+button,.btn{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:10px;
+padding:9px 14px;font:inherit;font-size:14px;cursor:pointer;transition:transform .08s,background .15s}
+button:active{transform:scale(.96)}
+button.primary{background:var(--blue);border-color:var(--blue)}
+button.warn{background:transparent;border-color:var(--red);color:var(--red)}
+button.small{padding:6px 10px;font-size:13px}
+button:disabled{opacity:.5}
+input,select{background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:9px 11px;font:inherit;width:100%}
+input[type=range]{padding:0;accent-color:var(--accent)}
+input[type=checkbox]{width:auto;accent-color:var(--accent);transform:scale(1.3)}
+label.f{display:block;margin:10px 0 4px;color:var(--dim);font-size:13px}
+nav{position:fixed;bottom:0;left:0;right:0;z-index:6;display:flex;background:rgba(17,19,31,.96);
+border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);backdrop-filter:blur(8px)}
+nav button{flex:1;background:none;border:0;border-radius:0;padding:8px 0 9px;color:var(--dim);font-size:11px;display:flex;flex-direction:column;align-items:center;gap:3px}
+nav button svg{width:22px;height:22px}
+nav button.on{color:var(--accent)}
+.list>div{display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid var(--line)}
+.list>div:last-child{border-bottom:0}
+.badge{font-size:11px;padding:2px 7px;border-radius:20px;background:var(--panel2);color:var(--dim);white-space:nowrap}
+.badge.nes{background:#5a1d24;color:#ffb3b3}.badge.gb{background:#1f4a2c;color:#b6f0c4}
+.star{background:none;border:0;font-size:20px;padding:4px;color:#555b7a}
+.star.on{color:var(--accent)}
+.chips{display:flex;gap:6px;overflow-x:auto;margin:10px 0}
+.chips button{border-radius:20px;padding:6px 12px;white-space:nowrap}
+.chips button.on{background:var(--accent);color:#111;border-color:var(--accent)}
+.bar{height:8px;background:var(--bg);border-radius:8px;overflow:hidden;border:1px solid var(--line)}
+.bar>i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--blue),var(--accent));transition:width .2s}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{background:var(--panel2);border-radius:10px;padding:10px}
+.stat b{display:block;font-size:17px}
+#toast{position:fixed;left:50%;top:14px;transform:translate(-50%,-90px);background:var(--panel2);border:1px solid var(--accent);
+padding:10px 16px;border-radius:12px;z-index:20;transition:transform .3s cubic-bezier(.2,1.3,.4,1);max-width:90vw}
+#toast.show{transform:translate(-50%,0)}
+/* ---- remote ---- */
+.screenwrap{display:flex;justify-content:center;background:#000;border-radius:var(--r);padding:12px;border:1px solid var(--line);position:relative}
+canvas#scr{image-rendering:pixelated;width:100%;max-width:480px;border-radius:4px;background:#111}
+canvas#scr.portrait{max-width:300px}
+#fps{position:absolute;top:8px;right:12px;font-size:11px;color:var(--dim)}
+.pad{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;margin:18px 0 6px;user-select:none;-webkit-user-select:none;touch-action:none}
+.dpad{display:grid;grid-template-columns:repeat(3,52px);grid-template-rows:repeat(3,52px);gap:3px}
+.dpad b,.ab b,.mid b{display:flex;align-items:center;justify-content:center;background:var(--panel2);border:1px solid var(--line);
+color:var(--dim);font-weight:600;transition:background .06s,transform .06s}
+.dpad b{border-radius:10px}
+.dpad b.c{background:transparent;border:0}
+.ab{display:flex;gap:14px;justify-content:flex-end;transform:rotate(-18deg)}
+.ab b{width:64px;height:64px;border-radius:50%;font-size:20px;color:var(--text)}
+.ab b[data-k="16"]{background:#7a2230}.ab b[data-k="32"]{background:#2a3570}
+.mid{display:flex;flex-direction:column;gap:10px;align-items:center}
+.mid b{border-radius:20px;padding:7px 12px;font-size:11px;min-width:64px}
+.pressed{background:var(--accent)!important;color:#111!important;transform:scale(.94)}
+kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:0 5px;font-size:12px}
+.drop{border:2px dashed var(--line);border-radius:var(--r);padding:18px;text-align:center;color:var(--dim);transition:border-color .2s}
+.drop.over{border-color:var(--accent);color:var(--text)}
+a{color:var(--accent)}
+</style>
+</head>
+<body>
+<header><h1>RETRO <b>POCKET</b></h1><div id="status"><span id="stxt">connecting…</span><span class="dot" id="sdot"></span></div></header>
+<div id="toast"></div>
+<main>
+
+<!-- PLAY -->
+<section id="t-play" class="on">
+  <div class="card row" id="nowcard"><div class="grow"><div class="muted">Now playing</div><div class="ell" id="now">Menu</div></div>
+    <button class="small" onclick="api('/api/screenshot.bmp',null,'dl')">📷</button>
+    <button class="small warn" id="exitbtn" onclick="post('/api/exit').then(()=>toast('Back to menu'))">Exit game</button></div>
+  <div class="screenwrap"><canvas id="scr" width="160" height="128"></canvas><span id="fps"></span></div>
+  <div class="pad" id="pad">
+    <div class="dpad">
+      <b class="c"></b><b data-k="1">▲</b><b class="c"></b>
+      <b data-k="4">◀</b><b class="c"></b><b data-k="8">▶</b>
+      <b class="c"></b><b data-k="2">▼</b><b class="c"></b>
+    </div>
+    <div class="mid"><b data-k="256">MENU</b><b data-k="128">SELECT</b><b data-k="64">START</b></div>
+    <div class="ab"><b data-k="32">B</b><b data-k="16">A</b></div>
+  </div>
+  <p class="muted" style="text-align:center">Keyboard: <kbd>←↑→↓</kbd> move · <kbd>X</kbd> A · <kbd>Z</kbd> B · <kbd>Enter</kbd> Start · <kbd>Shift</kbd> Select · <kbd>Esc</kbd> Menu. USB/Bluetooth gamepads work too.</p>
+</section>
+
+<!-- GAMES -->
+<section id="t-games">
+  <div class="row"><input id="q" placeholder="Search games…" oninput="renderGames()"><button onclick="post('/api/rescan').then(()=>{toast('Rescanning SD card…');setTimeout(loadGames,2500)})">↻</button></div>
+  <div class="chips" id="chips"></div>
+  <div class="card list" id="games"><div class="muted">Loading…</div></div>
+  <h2>Add games</h2>
+  <div class="card">
+    <div class="drop" id="gdrop">Drop <b>.zip .nes .gb .gbc</b> files here or <a href="#" onclick="gfile.click();return false">choose files</a><br><span class="muted">They go to /roms and show up right away.</span></div>
+    <input type="file" id="gfile" multiple accept=".zip,.nes,.gb,.gbc,.dmg" hidden>
+    <div id="gprog"></div>
+  </div>
+</section>
+
+<!-- FILES -->
+<section id="t-files">
+  <div class="row"><div class="grow ell" id="cwd" style="font-weight:600">/</div>
+    <button class="small" onclick="mkdirHere()">+ Folder</button><button class="small" onclick="ffile.click()">⇪ Upload</button></div>
+  <input type="file" id="ffile" multiple hidden>
+  <div id="fprog"></div>
+  <div class="card list" id="files" style="margin-top:10px"></div>
+</section>
+
+<!-- WIFI -->
+<section id="t-wifi">
+  <div class="card" id="wstat"></div>
+  <h2>Networks</h2>
+  <div class="card">
+    <button class="primary" id="scanbtn" onclick="scan()">Scan for networks</button>
+    <div class="list" id="nets" style="margin-top:8px"></div>
+    <label class="f">Or type a network name</label>
+    <div class="row"><input id="mssid" placeholder="Network name (SSID)"><button onclick="askPass(mssid.value,true)">Join</button></div>
+  </div>
+  <div class="card" id="joincard" style="display:none">
+    <div>Join <b id="jssid"></b></div>
+    <label class="f">Password</label>
+    <div class="row"><input id="jpass" type="password" placeholder="Password"><button class="small" onclick="jpass.type=jpass.type=='text'?'password':'text'">👁</button></div>
+    <div class="row" style="margin-top:10px"><button class="primary" onclick="join()">Connect</button><button onclick="joincard.style.display='none'">Cancel</button></div>
+  </div>
+  <h2>Hotspot</h2>
+  <div class="card row"><div class="grow">Device hotspot<div class="muted" id="apinfo"></div></div><input type="checkbox" id="apchk" onchange="post('/api/wifi/hotspot?on='+(this.checked?1:0))"></div>
+  <div class="card row"><div class="grow">Forget saved network<div class="muted">The device opens its hotspot again for setup.</div></div><button class="warn small" onclick="if(confirm('Forget the saved Wi-Fi network?'))post('/api/wifi/forget').then(()=>toast('Forgotten'))">Forget</button></div>
+</section>
+
+<!-- SETTINGS -->
+<section id="t-settings">
+  <h2>Display & controls</h2>
+  <div class="card">
+    <label class="f">Brightness <span id="bval"></span></label><input type="range" min="10" max="100" step="10" data-s="brightness">
+    <label class="f">Screen orientation</label><select data-s="rotation"><option value="0">Landscape</option><option value="1">Portrait</option><option value="2">Landscape (flipped)</option><option value="3">Portrait (flipped)</option></select>
+    <label class="f">Joystick rotation</label><select data-s="stick_rot"><option value="0">0°</option><option value="1">90°</option><option value="2">180°</option><option value="3">270°</option></select>
+    <label class="f">Game Boy colors</label><select data-s="gb_palette"><option value="0">Green</option><option value="1">Grey</option><option value="2">Pocket</option><option value="3">Warm</option><option value="4">Color</option></select>
+    <label class="f">NES picture</label><select data-s="nes_scale"><option value="0">Full</option><option value="1">Trim edges</option></select>
+    <div class="row" style="margin-top:14px"><div class="grow">Swap red / blue</div><input type="checkbox" data-s="swap_rb"></div>
+    <div class="row" style="margin-top:14px"><div class="grow">Show FPS</div><input type="checkbox" data-s="show_fps"></div>
+    <div class="row" style="margin-top:14px"><div class="grow">Menu animations</div><input type="checkbox" data-s="ui_anim"></div>
+  </div>
+</section>
+
+<!-- SYSTEM -->
+<section id="t-system">
+  <h2>Device</h2>
+  <div class="grid" id="sysgrid"></div>
+  <div class="card" style="margin-top:12px"><div class="row"><div class="grow">SD card</div><span class="muted" id="sdtxt"></span></div><div class="bar" style="margin-top:8px"><i id="sdbar"></i></div></div>
+  <h2>Firmware update</h2>
+  <div class="card">
+    <div class="row"><div class="grow">Installed <b id="curver"></b><div class="muted" id="otamsg">Check GitHub for a newer version.</div></div>
+      <button onclick="otaCheck(false)">Check</button><button class="primary" id="instbtn" style="display:none" onclick="otaCheck(true)">Install</button></div>
+    <div class="bar" style="margin-top:10px;display:none" id="otabarw"><i id="otabar"></i></div>
+    <label class="f" style="margin-top:16px">Or upload a firmware file (<b>retro-pocket.bin</b>)</label>
+    <div class="row"><input type="file" id="otafile" accept=".bin"><button onclick="otaUpload()">Upload</button></div>
+    <details style="margin-top:12px"><summary class="muted">Update source</summary>
+      <label class="f">GitHub repo (owner/name)</label><input id="orepo">
+      <label class="f">Branch</label><input id="obranch">
+      <label class="f">Folder</label><input id="opath">
+      <label class="f">Token (only for private repos; read-only "Contents" permission)</label><input id="otoken" type="password" placeholder="none">
+      <button style="margin-top:10px" onclick="saveSrc()">Save</button>
+    </details>
+  </div>
+  <div class="card row"><div class="grow">Restart device</div><button class="warn small" onclick="if(confirm('Restart now?'))post('/api/reboot').then(()=>toast('Restarting…'))">Restart</button></div>
+</section>
+</main>
+
+<nav id="nav"></nav>
+
+<script>
+const $=id=>document.getElementById(id);
+const TABS=[['play','Play','M6 12h4m-2-2v4m7-1h.01M18 11h.01M7 6h10a5 5 0 0 1 5 5v2a5 5 0 0 1-9 3h-2a5 5 0 0 1-9-3v-2a5 5 0 0 1 5-5z'],
+['games','Games','M4 6h16M4 12h16M4 18h10'],['files','Files','M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z'],
+['wifi','Wi-Fi','M2 9a15 15 0 0 1 20 0M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M12 19.5h.01'],
+['settings','Settings','M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm7.4-3a7.4 7.4 0 0 0-.1-1.2l2-1.6-2-3.4-2.4 1a7 7 0 0 0-2-1.2L14.5 3h-5l-.4 2.6a7 7 0 0 0-2 1.2l-2.4-1-2 3.4 2 1.6a7.4 7.4 0 0 0 0 2.4l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 2 1.2l.4 2.6h5l.4-2.6a7 7 0 0 0 2-1.2l2.4 1 2-3.4-2-1.6c.1-.4.1-.8.1-1.2z'],
+['system','System','M4 5h16v11H4zM9 20h6M12 16v4']];
+let tab='play';
+$('nav').innerHTML=TABS.map(([id,n,d])=>`<button data-t="${id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg>${n}</button>`).join('');
+$('nav').onclick=e=>{const b=e.target.closest('button');if(b)show(b.dataset.t)};
+function show(t){tab=t;document.querySelectorAll('section').forEach(s=>s.classList.toggle('on',s.id=='t-'+t));
+ document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t==t));
+ location.hash=t;({games:loadGames,files:()=>loadFiles(cwd),settings:loadSettings,system:loadSystem,wifi:loadInfo})[t]?.();
+ if(t=='play')askFrame();}
+let toastT;function toast(m){const e=$('toast');e.textContent=m;e.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>e.classList.remove('show'),2600)}
+function api(u,opt,mode){if(mode=='dl'){location.href=u;return}return fetch(u,opt).then(async r=>{const j=await r.json().catch(()=>({}));if(!r.ok||j.ok===false)throw new Error(j.error||r.statusText);return j})}
+const post=(u,body)=>api(u,{method:'POST',body:body?JSON.stringify(body):undefined,headers:body?{'Content-Type':'application/json'}:{}}).catch(e=>{toast('⚠ '+e.message);throw e});
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const size=b=>b>1e9?(b/1e9).toFixed(1)+' GB':b>1e6?(b/1e6).toFixed(1)+' MB':b>1e3?(b/1e3).toFixed(0)+' KB':b+' B';
+
+/* ---------- status ---------- */
+let info={};
+async function loadInfo(){try{info=await api('/api/info')}catch(e){$('stxt').textContent='offline';$('sdot').className='dot';return}
+ $('sdot').className='dot on';$('stxt').textContent=info.wifi=='connected'?info.ssid+' '+(info.rssi||'')+'dBm':info.wifi=='hotspot'?'Hotspot':info.wifi;
+ $('now').textContent=info.playing||'Menu';$('exitbtn').style.display=info.playing?'':'none';
+ if(tab=='wifi')renderWifi();if(tab=='system')renderSystem();}
+setInterval(loadInfo,3000);
+
+/* ---------- remote control ---------- */
+const cv=$('scr'),cx=cv.getContext('2d');let ws,img,waiting=false,frames=0,lastF=performance.now(),touchKeys=0,kbKeys=0,padKeys=0,sent=-1;
+function wsOpen(){ws=new WebSocket(`ws://${location.host}/ws`);ws.binaryType='arraybuffer';
+ ws.onopen=()=>{waiting=false;askFrame()};ws.onclose=()=>setTimeout(wsOpen,1500);
+ ws.onmessage=e=>{if(typeof e.data=='string')return;const v=new DataView(e.data),w=v.getUint16(0,true),h=v.getUint16(2,true);
+  if(cv.width!=w||cv.height!=h){cv.width=w;cv.height=h;img=null;cv.classList.toggle('portrait',h>w)}
+  if(!img)img=cx.createImageData(w,h);const d=img.data;
+  for(let i=0,o=0,p=4;i<w*h;i++,o+=4,p+=2){const c=(v.getUint8(p)<<8)|v.getUint8(p+1);d[o]=(c>>8)&0xf8;d[o+1]=(c>>3)&0xfc;d[o+2]=(c<<3)&0xf8;d[o+3]=255}
+  cx.putImageData(img,0,0);frames++;const n=performance.now();if(n-lastF>1000){$('fps').textContent=frames+' fps';frames=0;lastF=n}
+  waiting=false;setTimeout(askFrame,40)}}
+function askFrame(){if(tab!='play'||document.hidden||waiting||!ws||ws.readyState!=1)return;waiting=true;ws.send('f');setTimeout(()=>{waiting=false},2000)}
+document.addEventListener('visibilitychange',askFrame);
+function sendKeys(force){const k=touchKeys|kbKeys|padKeys;if(ws&&ws.readyState==1&&(k!=sent||force)){ws.send('k'+k);sent=k}}
+setInterval(()=>sendKeys(true),300);
+const pad=$('pad'),ptr=new Map();
+function padUpdate(){touchKeys=0;document.querySelectorAll('.pressed').forEach(b=>b.classList.remove('pressed'));
+ for(const el of ptr.values()){if(el){touchKeys|=+el.dataset.k;el.classList.add('pressed')}}sendKeys()}
+pad.addEventListener('pointerdown',e=>{pad.setPointerCapture(e.pointerId);ptr.set(e.pointerId,hit(e));padUpdate();navigator.vibrate?.(8)});
+pad.addEventListener('pointermove',e=>{if(ptr.has(e.pointerId)){ptr.set(e.pointerId,hit(e));padUpdate()}});
+['pointerup','pointercancel'].forEach(t=>pad.addEventListener(t,e=>{ptr.delete(e.pointerId);padUpdate()}));
+function hit(e){const el=document.elementFromPoint(e.clientX,e.clientY);return el&&el.dataset&&el.dataset.k?el:null}
+const KEYMAP={ArrowUp:1,ArrowDown:2,ArrowLeft:4,ArrowRight:8,KeyX:16,KeyZ:32,Enter:64,ShiftLeft:128,ShiftRight:128,Escape:256,Backspace:256};
+addEventListener('keydown',e=>{if(tab!='play'||!(e.code in KEYMAP))return;e.preventDefault();kbKeys|=KEYMAP[e.code];sendKeys()});
+addEventListener('keyup',e=>{if(!(e.code in KEYMAP))return;kbKeys&=~KEYMAP[e.code];sendKeys()});
+(function gp(){const g=[...(navigator.getGamepads?.()||[])].find(Boolean);let k=0;
+ if(g){const b=i=>g.buttons[i]?.pressed,ax=g.axes;if(b(12)||ax[1]<-.5)k|=1;if(b(13)||ax[1]>.5)k|=2;if(b(14)||ax[0]<-.5)k|=4;if(b(15)||ax[0]>.5)k|=8;
+  if(b(0))k|=16;if(b(1)||b(2))k|=32;if(b(9))k|=64;if(b(8))k|=128;if(b(16)||b(10))k|=256}
+ if(k!=padKeys){padKeys=k;sendKeys()}requestAnimationFrame(gp)})();
+
+/* ---------- games ---------- */
+let games=[],recent=[],filter='all';
+async function loadGames(){try{const j=await api('/api/games');games=j.games;recent=j.recent;renderGames()}catch(e){$('games').innerHTML='<div class="muted">Couldn\'t load games</div>'}}
+function renderGames(){const f=[['all','All'],['1','NES'],['2','Game Boy'],['fav','★ Favorites'],['recent','Recent']];
+ $('chips').innerHTML=f.map(([k,n])=>`<button class="${filter==k?'on':''}" onclick="filter='${k}';renderGames()">${n}</button>`).join('');
+ const q=$('q').value.toLowerCase();let l=filter=='recent'?recent:games;
+ l=l.filter(g=>(filter=='all'||filter=='recent'||(filter=='fav'?g.fav:g.sys==filter))&&g.name.toLowerCase().includes(q));
+ $('games').innerHTML=l.length?l.slice(0,400).map(g=>`<div><button class="star ${g.fav?'on':''}" onclick='fav(${JSON.stringify(g.path)},${!g.fav})'>★</button>
+ <div class="grow ell">${esc(g.name)}</div><span class="badge ${g.sys==1?'nes':'gb'}">${g.sys==1?'NES':'GB'}</span>
+ <button class="small primary" onclick='play(${JSON.stringify(g.path)},${JSON.stringify(g.name)})'>▶</button></div>`).join(''):
+ `<div class="muted">${games.length?'Nothing matches.':'No games yet: add some below.'}</div>`}
+function play(p,n){post('/api/launch?path='+encodeURIComponent(p)).then(()=>{toast('Starting '+n);show('play')})}
+function fav(p,on){post(`/api/fav?on=${on?1:0}&path=`+encodeURIComponent(p)).then(()=>{const g=games.find(g=>g.path==p);if(g)g.fav=on;renderGames()})}
+
+/* ---------- uploads ---------- */
+function upload(file,dest,box){return new Promise((res,rej)=>{const row=document.createElement('div');row.style.margin='10px 0';
+ row.innerHTML=`<div class="row"><div class="grow ell">${esc(file.name)}</div><span class="muted">${size(file.size)}</span></div><div class="bar"><i></i></div>`;
+ box.appendChild(row);const x=new XMLHttpRequest();x.open('PUT','/api/file?path='+encodeURIComponent(dest));
+ x.upload.onprogress=e=>row.querySelector('i').style.width=(e.loaded/e.total*100)+'%';
+ x.onload=()=>{if(x.status==200){row.querySelector('i').style.width='100%';setTimeout(()=>row.remove(),1500);res()}else{row.querySelector('.muted').textContent='failed';rej()}};
+ x.onerror=()=>{row.querySelector('.muted').textContent='failed';rej()};x.send(file)})}
+async function uploadMany(files,dir,box,done){for(const f of files){try{await upload(f,(dir=='/'?'':dir)+'/'+f.name,box)}catch(e){}}toast('Upload finished');done&&done()}
+$('gfile').onchange=e=>uploadMany([...e.target.files],'/roms',$('gprog'),()=>setTimeout(loadGames,2500));
+const gd=$('gdrop');['dragover','dragenter'].forEach(t=>gd.addEventListener(t,e=>{e.preventDefault();gd.classList.add('over')}));
+['dragleave','drop'].forEach(t=>gd.addEventListener(t,()=>gd.classList.remove('over')));
+gd.addEventListener('drop',e=>{e.preventDefault();uploadMany([...e.dataTransfer.files],'/roms',$('gprog'),()=>setTimeout(loadGames,2500))});
+
+/* ---------- files ---------- */
+let cwd='/';
+async function loadFiles(d){cwd=d;$('cwd').textContent=d;let j;try{j=await api('/api/files?dir='+encodeURIComponent(d))}catch(e){$('files').innerHTML='<div class="muted">'+esc(e.message)+'</div>';return}
+ const l=j.files.sort((a,b)=>(b.dir-a.dir)||a.name.localeCompare(b.name,undefined,{numeric:true}));
+ const up=d!='/'?`<div onclick="loadFiles('${esc(d.replace(/\/[^/]+$/,'')||'/')}')" style="cursor:pointer">📁 <b>..</b></div>`:'';
+ $('files').innerHTML=up+(l.map(f=>{const p=(d=='/'?'':d)+'/'+f.name;const P=esc(JSON.stringify(p));
+  return `<div><span>${f.dir?'📁':'📄'}</span><div class="grow ell" ${f.dir?`style="cursor:pointer" onclick='loadFiles(${P})'`:''}>${esc(f.name)}</div>
+  ${f.dir?'':`<span class="muted">${size(f.size)}</span><button class="small" onclick='location.href="/api/file?path="+encodeURIComponent(${P})'>⇩</button>`}
+  <button class="small" onclick='ren(${P})'>✎</button><button class="small warn" onclick='del(${P})'>✕</button></div>`}).join('')||'<div class="muted">Empty folder</div>')}
+function del(p){if(confirm('Delete '+p+'?'))api('/api/file?path='+encodeURIComponent(p),{method:'DELETE'}).then(()=>{toast('Deleted');loadFiles(cwd)}).catch(e=>toast('⚠ '+e.message))}
+function ren(p){const n=prompt('New name',p.split('/').pop());if(n)post(`/api/rename?from=${encodeURIComponent(p)}&to=${encodeURIComponent(p.replace(/[^/]+$/,n))}`).then(()=>loadFiles(cwd))}
+function mkdirHere(){const n=prompt('Folder name');if(n)post('/api/mkdir?path='+encodeURIComponent((cwd=='/'?'':cwd)+'/'+n)).then(()=>loadFiles(cwd))}
+$('ffile').onchange=e=>uploadMany([...e.target.files],cwd,$('fprog'),()=>loadFiles(cwd));
+
+/* ---------- wifi ---------- */
+function renderWifi(){const s=info.wifi;
+ $('wstat').innerHTML=`<div class="row"><div class="grow"><div class="muted">Status</div><b>${s=='connected'?'Connected to '+esc(info.ssid):s=='connecting'?'Connecting to '+esc(info.ssid)+'…':s=='hotspot'?'Hotspot only':'Off'}</b>
+ ${info.ip?`<div class="muted">Web UI: <a href="http://${info.ip}">http://${info.ip}</a> · ${info.rssi} dBm</div>`:''}</div></div>`;
+ $('apchk').checked=info.hotspot;$('apinfo').textContent=`${info.ap_ssid} · password: retropocket · http://192.168.4.1`}
+async function scan(){const b=$('scanbtn');b.disabled=true;b.textContent='Scanning…';
+ try{const j=await api('/api/wifi/scan');$('nets').innerHTML=j.networks.map(n=>{const bars=n.rssi>-55?4:n.rssi>-65?3:n.rssi>-75?2:1;
+  return `<div style="cursor:pointer" onclick='askPass(${esc(JSON.stringify(n.ssid))},${n.secure})'><span>${'▂▄▆█'.slice(0,bars)}</span><div class="grow ell">${esc(n.ssid)}</div><span class="muted">${n.secure?'🔒':''} ${n.rssi} dBm</span></div>`}).join('')||'<div class="muted">No networks found</div>'}
+ catch(e){toast('Scan failed')}b.disabled=false;b.textContent='Scan again'}
+function askPass(ssid,secure){if(!ssid)return;$('jssid').textContent=ssid;$('jpass').value='';$('joincard').style.display='';$('joincard').dataset.ssid=ssid;
+ if(!secure){join();return}$('jpass').focus();$('joincard').scrollIntoView({behavior:'smooth'})}
+function join(){const ssid=$('joincard').dataset.ssid;post('/api/wifi/connect',{ssid,pass:$('jpass').value}).then(()=>{$('joincard').style.display='none';
+ toast('Connecting to '+ssid+'… the device shows its new IP');})}
+
+/* ---------- settings ---------- */
+let setT;
+async function loadSettings(){const s=await api('/api/settings');document.querySelectorAll('[data-s]').forEach(el=>{const v=s[el.dataset.s];
+ if(el.type=='checkbox')el.checked=!!v;else el.value=v});$('bval').textContent=s.brightness+'%';
+ $('orepo').value=s.ota_repo;$('obranch').value=s.ota_branch;$('opath').value=s.ota_path;$('otoken').value=s.ota_has_token?'********':''}
+document.querySelectorAll('[data-s]').forEach(el=>el.addEventListener(el.type=='range'?'input':'change',()=>{
+ if(el.dataset.s=='brightness')$('bval').textContent=el.value+'%';clearTimeout(setT);
+ setT=setTimeout(()=>post('/api/settings',{[el.dataset.s]:el.type=='checkbox'?+el.checked:+el.value}).then(()=>toast('Saved')),150)}));
+function saveSrc(){post('/api/settings',{ota_repo:$('orepo').value,ota_branch:$('obranch').value,ota_path:$('opath').value,ota_token:$('otoken').value}).then(()=>toast('Update source saved'))}
+
+/* ---------- system & OTA ---------- */
+function fmtUp(s){const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?`${h}h ${m}m`:`${m}m ${s%60}s`}
+function renderSystem(){const i=info;$('curver').textContent='v'+i.version;
+ $('sysgrid').innerHTML=[['Firmware','v'+i.version],['IP address',i.ip||(i.hotspot?'192.168.4.1':'-')],['Uptime',fmtUp(i.uptime)],['Games',`${i.nes} NES · ${i.gb} GB`],
+ ['Free RAM',size(i.heap)],['Free PSRAM',size(i.psram)]].map(([k,v])=>`<div class="stat"><span class="muted">${k}</span><b>${esc(v)}</b></div>`).join('');
+ if(i.sd_total){$('sdtxt').textContent=`${size(i.sd_total-i.sd_free)} used of ${size(i.sd_total)}`;$('sdbar').style.width=((1-i.sd_free/i.sd_total)*100)+'%'}else $('sdtxt').textContent='no card';
+ const o=i.ota;if(o.message)$('otamsg').textContent=o.message;$('instbtn').style.display=o.available==1&&o.phase=='idle'?'':'none';
+ $('otabarw').style.display=o.phase=='downloading'||o.phase=='done'?'':'none';$('otabar').style.width=o.percent+'%';
+ if(o.phase=='checking'||o.phase=='downloading')setTimeout(loadInfo,800)}
+function loadSystem(){loadInfo()}
+function otaCheck(install){post('/api/ota/check?install='+(install?1:0)).then(()=>{$('otamsg').textContent=install?'Installing… watch the device screen':'Checking…';setTimeout(loadInfo,1200)})}
+function otaUpload(){const f=$('otafile').files[0];if(!f)return toast('Pick the .bin file first');
+ const x=new XMLHttpRequest();x.open('POST','/api/ota/upload');$('otabarw').style.display='';
+ x.upload.onprogress=e=>$('otabar').style.width=(e.loaded/e.total*100)+'%';
+ x.onload=()=>{let j={};try{j=JSON.parse(x.responseText)}catch(e){}if(x.status==200){$('otamsg').textContent='Installed! The device is restarting…';toast('Update installed');setTimeout(()=>location.reload(),9000)}else toast('⚠ '+(j.error||'Upload failed'))};
+ x.onerror=()=>toast('⚠ Upload failed');x.send(f)}
+
+show((location.hash||'#play').slice(1));loadInfo();wsOpen();
+</script>
+</body>
+</html>

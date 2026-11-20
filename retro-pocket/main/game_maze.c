@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include "emulators.h"
 #include "system.h"
+#include "bridge.h"
 #include "display.h"
 #include "gfx.h"
 #include "input.h"
@@ -167,6 +168,7 @@ void game_maze_run(const char *unused)
 
     for (;;) {
         uint32_t k = input_poll();
+        if (bridge_quit_requested()) return;
         int64_t now = esp_timer_get_time();
         float dt = (now - last) / 1e6f;
         last = now;

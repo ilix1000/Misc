@@ -5,6 +5,8 @@
 #include "board.h"
 #include "gfx.h"
 #include "input.h"
+#include "ui.h"
+#include "bridge.h"
 #include "esp_heap_caps.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
@@ -94,33 +96,44 @@ ingame_action_t ingame_menu(const char *title, bool has_states)
     snapshot_take();
     wait_release();
     int sel = 0;
-    const int w = 100, h = 18 + n * 12, x = (LCD_WIDTH - w) / 2, y = (LCD_HEIGHT - h) / 2;
+    float hl = 0, open = ui_anim_on() ? 0 : 1;
+    ui_dt();
+    const int w = 104, h = 20 + n * 13, x = (LCD_WIDTH - w) / 2, y = (LCD_HEIGHT - h) / 2;
     for (;;) {
+        float dt = ui_dt();
         input_poll();
         uint32_t r = input_repeat(), p = input_pressed();
         if (r & BTN_UP) sel = (sel + n - 1) % n;
         if (r & BTN_DOWN) sel = (sel + 1) % n;
+        bool quit = bridge_quit_requested();
         if (p & (BTN_B | BTN_MENU)) sel = -1;
-        if (sel < 0 || (p & (BTN_A | BTN_START))) {
+        if (quit || sel < 0 || (p & (BTN_A | BTN_START))) {
             /* leave the plain (dimmed) game frame on screen behind any message */
+            gfx_set_origin(0, 0);
             snapshot_draw(display_fb());
             display_present();
             wait_release();
-            return sel < 0 ? MENU_RESUME : items[idx[sel]].act;
+            return quit ? MENU_QUIT : sel < 0 ? MENU_RESUME : items[idx[sel]].act;
         }
+        open = ui_approach(open, 1, 9, dt);
+        hl = ui_approach(hl, sel * 13, 22, dt);
+        int oy = (int)((1 - ui_ease_out_back(open)) * (LCD_HEIGHT - y));
 
         uint16_t *fb = display_fb();
+        gfx_set_origin(0, 0);
         snapshot_draw(fb);
-        gfx_rect(fb, x, y, w, h, C_PANEL);
-        gfx_frame(fb, x, y, w, h, C_ACCENT);
+        gfx_set_origin(0, oy);
+        gfx_round_rect(fb, x - 1, y - 1, w + 2, h + 2, C_ACCENT);
+        gfx_round_rect(fb, x, y, w, h, RGB(24, 27, 46));
+        gfx_rect(fb, x + 1, y + 1, w - 2, 13, RGB(44, 40, 30));
         gfx_text(fb, x + 6, y + 4, title, C_ACCENT, (w - 12) / CHAR_W);
-        for (int i = 0; i < n; i++) {
-            int iy = y + 15 + i * 12;
-            if (i == sel) gfx_rect(fb, x + 3, iy - 2, w - 6, 11, C_SEL);
-            gfx_text(fb, x + 10, iy, items[idx[i]].label, C_TEXT, 0);
-        }
+        gfx_round_rect(fb, x + 4, y + 17 + (int)hl, w - 8, 12, C_SEL);
+        for (int i = 0; i < n; i++)
+            gfx_text(fb, x + 12, y + 19 + i * 13, items[idx[i]].label, i == sel ? C_TEXT : C_DIM, 0);
+        gfx_set_origin(0, 0);
+        ui_draw_toast(fb, dt);
         display_present();
-        vTaskDelay(pdMS_TO_TICKS(16));
+        vTaskDelay(pdMS_TO_TICKS(12));
     }
 }
 
@@ -129,19 +142,28 @@ void message_box(const char *line1, const char *line2, int ms)
     snapshot_take();
     int64_t end = esp_timer_get_time() + (int64_t)ms * 1000;
     wait_release();
+    float open = ui_anim_on() ? 0 : 1;
+    ui_dt();
     for (;;) {
+        float dt = ui_dt();
+        open = ui_approach(open, 1, 10, dt);
+        float k = ui_ease_out_back(open);
         uint16_t *fb = display_fb();
+        gfx_set_origin(0, 0);
         snapshot_draw(fb);
-        int by = (LCD_HEIGHT - 40) / 2;
-        gfx_rect(fb, 4, by, LCD_WIDTH - 8, 40, C_PANEL);
-        gfx_frame(fb, 4, by, LCD_WIDTH - 8, 40, C_ACCENT);
-        gfx_text_center(fb, by + 10, line1, C_TEXT);
-        if (line2) gfx_text_center(fb, by + 22, line2, C_DIM);
+        int bw = (int)((LCD_WIDTH - 8) * (0.6f + 0.4f * k)), bh = 40;
+        int bx = (LCD_WIDTH - bw) / 2, by = (LCD_HEIGHT - bh) / 2;
+        gfx_round_rect(fb, bx - 1, by - 1, bw + 2, bh + 2, C_ACCENT);
+        gfx_round_rect(fb, bx, by, bw, bh, RGB(24, 27, 46));
+        if (open > 0.5f) {
+            gfx_text_center(fb, by + 10, line1, C_TEXT);
+            if (line2) gfx_text_center(fb, by + 22, line2, C_DIM);
+        }
         display_present();
         input_poll();
         if (input_pressed()) break;
         if (ms > 0 && esp_timer_get_time() >= end) break;
-        vTaskDelay(pdMS_TO_TICKS(16));
+        vTaskDelay(pdMS_TO_TICKS(12));
     }
     wait_release();
 }

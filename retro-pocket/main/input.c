@@ -4,6 +4,7 @@
 #include "input.h"
 #include "board.h"
 #include "system.h"
+#include "bridge.h"
 #include "driver/gpio.h"
 #include "esp_adc/adc_oneshot.h"
 #include "esp_timer.h"
@@ -89,6 +90,14 @@ uint32_t input_poll(void)
     if (s_dir_y > 0) held |= BTN_DOWN;
     for (int i = 0; i < sizeof(btn_pins) / sizeof(btn_pins[0]); i++)
         if (btn_pins[i] >= 0 && gpio_get_level(btn_pins[i]) == 0) held |= btn_bits[i];
+
+    /* buttons held on the web remote */
+    uint32_t remote = bridge_remote_keys();
+    held |= remote;
+    if (remote & BTN_LEFT) s_jx = -1;
+    if (remote & BTN_RIGHT) s_jx = 1;
+    if (remote & BTN_UP) s_jy = -1;
+    if (remote & BTN_DOWN) s_jy = 1;
 
     s_pressed = held & ~s_held;
     int64_t now = esp_timer_get_time();

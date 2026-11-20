@@ -3,6 +3,8 @@
  * has its own version in sim/).
  */
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/stat.h>
 #include "system.h"
 #include "board.h"
@@ -28,10 +30,29 @@ void settings_load(void)
     }
     nvs_handle_t h;
     if (nvs_open("retropocket", NVS_READONLY, &h) != ESP_OK) return;
-    size_t sz = sizeof(g_settings);
-    settings_t tmp;
-    if (nvs_get_blob(h, "settings", &tmp, &sz) == ESP_OK && sz == sizeof(tmp)) g_settings = tmp;
+    nvs_get_blob_compat(h, "settings", &g_settings, sizeof(g_settings));
     nvs_close(h);
+    /* clamp anything an older/newer firmware may have left out of range */
+    if (g_settings.brightness < 10 || g_settings.brightness > 100) g_settings.brightness = 80;
+    g_settings.rotation &= 3;
+    g_settings.stick_rot &= 3;
+    if (g_settings.gb_palette < 0 || g_settings.gb_palette > 4) g_settings.gb_palette = 0;
+}
+
+/* Reads a struct saved by any firmware version. Settings structs only ever
+ * grow at the end, so an older (shorter) blob fills the fields it knows and
+ * the new fields keep their defaults; a newer (longer) one is truncated.
+ * This is what keeps your settings across updates. */
+bool nvs_get_blob_compat(nvs_handle_t h, const char *key, void *dst, size_t dst_size)
+{
+    size_t stored = 0;
+    if (nvs_get_blob(h, key, NULL, &stored) != ESP_OK || stored == 0) return false;
+    uint8_t *tmp = malloc(stored);
+    if (!tmp) return false;
+    bool ok = nvs_get_blob(h, key, tmp, &stored) == ESP_OK;
+    if (ok) memcpy(dst, tmp, stored < dst_size ? stored : dst_size);
+    free(tmp);
+    return ok;
 }
 
 void settings_save(void)

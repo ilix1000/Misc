@@ -125,10 +125,14 @@ After the first USB flash of v2.0, you never need the cable again:
 
 - **One tap:** *Settings → Update* on the device, or *System → Check / Install* in the
   web UI. It downloads `firmware/ota/` from GitHub, shows a progress bar and restarts.
-- **Upload:** *System → upload a firmware file* in the web UI, using `firmware/ota/retro-pocket.bin`.
+- **Upload:** *System → upload a firmware file* in the web UI. Either file works:
+  `firmware/ota/retro-pocket.bin` or the full `firmware/retro-pocket-esp32s3.bin`
+  (the device finds the app inside it). Files that aren't Retro Pocket firmware are
+  refused before anything is written.
 
-New firmware has to boot to the menu once to be kept. If it crashes before that,
-the device rolls back to the previous version automatically.
+**Your data stays:** updates keep Wi-Fi, settings, favorites, saves and games. New
+firmware has to boot to the menu once to be kept. If it crashes before that, the
+device rolls back to the previous version and tells you (on screen and in *System*).
 
 **Private repo?** GitHub won't hand files to anonymous devices from a private repo.
 Either make the repo public, or create a fine-grained token (GitHub → Settings →
@@ -161,9 +165,10 @@ Only use ROMs you made or have the right to use.
 ## Flashing the prebuilt firmware (easiest)
 
 [`firmware/retro-pocket-esp32s3.bin`](firmware/retro-pocket-esp32s3.bin) is built for the
-default pins above and octal PSRAM (N8R8 / N16R8). Flash it at offset **0x0**. v2.0
-changes the flash layout, so this USB flash is needed **once**; after that, use Wi-Fi updates.
-Settings are reset by this flash; your games and saves on the SD card are kept.
+default pins above and octal PSRAM (N8R8 / N16R8). Flash it at offset **0x0**.
+From v2.0.2 on, Wi-Fi and settings live at the end of flash, so USB-flashing this file
+keeps them (the very first USB flash of 2.0.2 over an older version resets them once).
+Games and saves on the SD card are never touched.
 
 - in a browser: open <https://espressif.github.io/esptool-js/>, connect, set address `0x0`, pick the file, Program
 - or from a terminal: `esptool.py --chip esp32s3 write_flash 0x0 firmware/retro-pocket-esp32s3.bin`

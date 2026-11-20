@@ -1,7 +1,9 @@
 # Name,   Type, SubType, Offset,   Size
 # Two app slots so firmware can update over Wi-Fi (OTA) and roll back.
-nvs,      data, nvs,     0x9000,   0x4000
+# NVS (Wi-Fi, settings) lives at the END of flash so flashing the full USB
+# image (which covers 0x0 up to the end of the app) never erases it.
 otadata,  data, ota,     0xd000,   0x2000
 phy_init, data, phy,     0xf000,   0x1000
 ota_0,    app,  ota_0,   0x10000,  0x1F0000
-ota_1,    app,  ota_1,   0x200000, 0x1F0000
+ota_1,    app,  ota_1,   0x200000, 0x1E0000
+nvs,      data, nvs,     0x3E0000, 0x20000

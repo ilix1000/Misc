@@ -34,11 +34,17 @@ void ota_online_start(bool install);
 /* 1 = newer version available, 0 = up to date, -1 = unknown/error. */
 int ota_update_available(void);
 
-/* Upload: called by the web server with the .bin streamed in chunks. */
+/* Upload: called by the web server with the .bin streamed in chunks.
+ * Takes either the app-only file or the full USB image. */
 bool ota_upload_begin(size_t size);
 bool ota_upload_write(const void *data, size_t len);
 bool ota_upload_end(void);   /* on success: reboot to apply */
 void ota_upload_abort(void);
+const char *ota_upload_error(void);    /* why begin/write/end failed */
+const char *ota_upload_version(void);  /* version inside the uploaded file */
+
+/* Non-empty if the last update couldn't boot and was rolled back. */
+const char *ota_rollback_info(void);
 
 /* Restarts in ~1 s (lets HTTP replies go out). */
 void ota_reboot_soon(void);

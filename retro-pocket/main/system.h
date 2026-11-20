@@ -3,6 +3,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/* Saved in flash as one blob. ONLY ADD NEW FIELDS AT THE END so settings
+ * survive firmware updates (see nvs_get_blob_compat). */
 typedef struct {
     int brightness;   /* 5..100 */
     int gb_palette;   /* index into GB palettes */
@@ -17,6 +19,10 @@ typedef struct {
 extern settings_t g_settings;
 void settings_load(void);
 void settings_save(void);
+#ifndef SIM
+#include "nvs.h"
+bool nvs_get_blob_compat(nvs_handle_t h, const char *key, void *dst, size_t dst_size);
+#endif
 
 bool sd_init(void);
 bool sd_ok(void);

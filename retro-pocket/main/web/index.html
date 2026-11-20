@@ -176,7 +176,7 @@ a{color:var(--accent)}
     <div class="row"><div class="grow">Installed <b id="curver"></b><div class="muted" id="otamsg">Check GitHub for a newer version.</div></div>
       <button onclick="otaCheck(false)">Check</button><button class="primary" id="instbtn" style="display:none" onclick="otaCheck(true)">Install</button></div>
     <div class="bar" style="margin-top:10px;display:none" id="otabarw"><i id="otabar"></i></div>
-    <label class="f" style="margin-top:16px">Or upload a firmware file (<b>retro-pocket.bin</b>)</label>
+    <label class="f" style="margin-top:16px">Or upload a firmware file (<b>retro-pocket.bin</b> or <b>retro-pocket-esp32s3.bin</b>, both work)</label>
     <div class="row"><input type="file" id="otafile" accept=".bin"><button onclick="otaUpload()">Upload</button></div>
     <details style="margin-top:12px"><summary class="muted">Update source</summary>
       <label class="f">GitHub repo (owner/name)</label><input id="orepo">
@@ -320,7 +320,7 @@ function renderSystem(){const i=info;$('curver').textContent='v'+i.version;
  $('sysgrid').innerHTML=[['Firmware','v'+i.version],['IP address',i.ip||(i.hotspot?'192.168.4.1':'-')],['Uptime',fmtUp(i.uptime)],['Games',`${i.nes} NES · ${i.gb} GB`],
  ['Free RAM',size(i.heap)],['Free PSRAM',size(i.psram)]].map(([k,v])=>`<div class="stat"><span class="muted">${k}</span><b>${esc(v)}</b></div>`).join('');
  if(i.sd_total){$('sdtxt').textContent=`${size(i.sd_total-i.sd_free)} used of ${size(i.sd_total)}`;$('sdbar').style.width=((1-i.sd_free/i.sd_total)*100)+'%'}else $('sdtxt').textContent='no card';
- const o=i.ota;if(o.message)$('otamsg').textContent=o.message;$('instbtn').style.display=o.available==1&&o.phase=='idle'?'':'none';
+ const o=i.ota;if(o.message)$('otamsg').textContent=o.message;else if(o.rollback)$('otamsg').innerHTML='⚠ '+esc(o.rollback);$('instbtn').style.display=o.available==1&&o.phase=='idle'?'':'none';
  $('otabarw').style.display=o.phase=='downloading'||o.phase=='done'?'':'none';$('otabar').style.width=o.percent+'%';
  if(o.phase=='checking'||o.phase=='downloading')setTimeout(loadInfo,800)}
 function loadSystem(){loadInfo()}
@@ -328,7 +328,7 @@ function otaCheck(install){post('/api/ota/check?install='+(install?1:0)).then(()
 function otaUpload(){const f=$('otafile').files[0];if(!f)return toast('Pick the .bin file first');
  const x=new XMLHttpRequest();x.open('POST','/api/ota/upload');$('otabarw').style.display='';
  x.upload.onprogress=e=>$('otabar').style.width=(e.loaded/e.total*100)+'%';
- x.onload=()=>{let j={};try{j=JSON.parse(x.responseText)}catch(e){}if(x.status==200){$('otamsg').textContent='Installed! The device is restarting…';toast('Update installed');setTimeout(()=>location.reload(),9000)}else toast('⚠ '+(j.error||'Upload failed'))};
+ x.onload=()=>{let j={};try{j=JSON.parse(x.responseText)}catch(e){}if(x.status==200){$('otamsg').textContent=`Installed v${j.version}! The device is restarting…`;toast('Installed v'+j.version+', restarting');setTimeout(()=>location.reload(),12000)}else toast('⚠ '+(j.error||'Upload failed'))};
  x.onerror=()=>toast('⚠ Upload failed');x.send(f)}
 
 show((location.hash||'#play').slice(1));loadInfo();wsOpen();

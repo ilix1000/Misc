@@ -220,6 +220,7 @@ static esp_err_t h_info(httpd_req_t *req)
     cJSON_AddStringToObject(u, "latest", st.latest);
     cJSON_AddStringToObject(u, "message", st.message);
     cJSON_AddNumberToObject(u, "available", ota_update_available());
+    cJSON_AddStringToObject(u, "rollback", ota_rollback_info());
     return send_json(req, o);
 }
 
@@ -542,23 +543,27 @@ static esp_err_t h_wifi_hotspot(httpd_req_t *req)
 static esp_err_t h_ota_upload(httpd_req_t *req)
 {
     if (req->content_len < 64 * 1024) return fail(req, "400 Bad Request", "that file is too small to be firmware");
-    if (!ota_upload_begin(req->content_len)) return fail(req, "409 Conflict", "an update is already running");
+    if (!ota_upload_begin(req->content_len)) return fail(req, "409 Conflict", ota_upload_error());
     char *buf = malloc(4096);
     int left = req->content_len;
-    bool good = buf != NULL;
+    bool good = buf != NULL, net_err = false;
     while (good && left > 0) {
         int r = httpd_req_recv(req, buf, left < 4096 ? left : 4096);
         if (r == HTTPD_SOCK_ERR_TIMEOUT) continue;
-        if (r <= 0 || !ota_upload_write(buf, r)) good = false;
+        if (r <= 0) { good = false; net_err = true; break; }
+        if (!ota_upload_write(buf, r)) good = false;
         else left -= r;
     }
     free(buf);
     if (!good) {
         ota_upload_abort();
-        return fail(req, "500 Internal Server Error", "upload failed");
+        return fail(req, "400 Bad Request", net_err ? "upload interrupted" : ota_upload_error());
     }
-    if (!ota_upload_end()) return fail(req, "400 Bad Request", "not a valid firmware for this device");
-    return ok(req);
+    if (!ota_upload_end()) return fail(req, "400 Bad Request", ota_upload_error());
+    char b[96];
+    snprintf(b, sizeof(b), "{\"ok\":true,\"version\":\"%s\"}", ota_upload_version());
+    httpd_resp_set_type(req, "application/json");
+    return httpd_resp_sendstr(req, b);
 }
 
 static esp_err_t h_ota_check(httpd_req_t *req)

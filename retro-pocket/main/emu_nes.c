@@ -1,6 +1,6 @@
 /*
  * emu_nes.c - NES front-end around agnes (MIT, cores/agnes.c).
- * Supports mappers 0 (NROM), 1 (MMC1), 2 (UxROM) and 4 (MMC3), which covers
+ * Supports mappers 0 (NROM), 1 (MMC1), 2 (UxROM), 3 (CNROM) and 4 (MMC3), which covers
  * a large part of the library.
  *
  * 256x240 is scaled to 160x128 with 2x2 averaging so details don't vanish

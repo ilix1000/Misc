@@ -16,7 +16,7 @@ you only flash it by USB once.
 
 | System      | Core | Notes |
 |-------------|------|-------|
-| NES         | [agnes](https://github.com/kgabis/agnes) (MIT) | Mappers 0, 1, 2, 4 (NROM, MMC1, UxROM, MMC3). Save states, battery saves. |
+| NES         | [agnes](https://github.com/kgabis/agnes) (MIT) | Mappers 0, 1, 2, 3, 4 (NROM, MMC1, UxROM, CNROM, MMC3). Save states, battery saves. |
 | Game Boy    | [Peanut-GB](https://github.com/deltabeard/Peanut-GB) (MIT) | All DMG games and dual-mode `.gbc`, 5 color palettes, save states, battery saves. Passes Blargg's `cpu_instrs`. |
 | Built-in    | Maze Runner 3D | An original first-person 3D maze game (raycaster) with analog movement, so you get some 3D on the device. |
 

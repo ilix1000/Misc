@@ -203,6 +203,15 @@ typedef struct mapper2 {
     uint8_t chr_ram[8 * 1024];
 } mapper2_t;
 
+/* Mapper 3 (CNROM): fixed PRG, 8 KB CHR bank picked by writes to $8000+.
+ * Added for Retro Pocket. */
+typedef struct mapper3 {
+    struct agnes *agnes;
+
+    unsigned prg_bank_offsets[2];
+    unsigned chr_bank_offset;
+} mapper3_t;
+
 typedef struct mapper4 {
     struct agnes *agnes;
 
@@ -252,6 +261,7 @@ typedef struct agnes {
         mapper0_t m0;
         mapper1_t m1;
         mapper2_t m2;
+        mapper3_t m3;
         mapper4_t m4;
     } mapper;
 
@@ -582,6 +592,7 @@ void agnes_dump_state(const agnes_t *agnes, agnes_state_t *out_res) {
         case 0: out_res->agnes.mapper.m0.agnes = NULL; break;
         case 1: out_res->agnes.mapper.m1.agnes = NULL; break;
         case 2: out_res->agnes.mapper.m2.agnes = NULL; break;
+        case 3: out_res->agnes.mapper.m3.agnes = NULL; break;
         case 4: out_res->agnes.mapper.m4.agnes = NULL; break;
     }
 }
@@ -596,6 +607,7 @@ bool agnes_restore_state(agnes_t *agnes, const agnes_state_t *state) {
         case 0: agnes->mapper.m0.agnes = agnes; break;
         case 1: agnes->mapper.m1.agnes = agnes; break;
         case 2: agnes->mapper.m2.agnes = agnes; break;
+        case 3: agnes->mapper.m3.agnes = agnes; break;
         case 4: agnes->mapper.m4.agnes = agnes; break;
     }
     return true;
@@ -2182,11 +2194,37 @@ static int take_branch(cpu_t *cpu, uint16_t addr) {
 #include "mapper4.h"
 #endif
 
+static void mapper3_init(mapper3_t *mapper, agnes_t *agnes) {
+    mapper->agnes = agnes;
+    mapper->prg_bank_offsets[0] = 0;
+    mapper->prg_bank_offsets[1] = agnes->gamepack.prg_rom_banks_count > 1 ? (16 * 1024) : 0;
+    mapper->chr_bank_offset = 0;
+}
+
+static uint8_t mapper3_read(mapper3_t *mapper, uint16_t addr) {
+    const gamepack_t *g = &mapper->agnes->gamepack;
+    if (addr < 0x2000) {
+        return g->data[g->chr_rom_offset + mapper->chr_bank_offset + addr];
+    } else if (addr >= 0x8000) {
+        unsigned bank_offset = mapper->prg_bank_offsets[(addr >> 14) & 0x1];
+        return g->data[g->prg_rom_offset + bank_offset + (addr & 0x3fff)];
+    }
+    return 0;
+}
+
+static void mapper3_write(mapper3_t *mapper, uint16_t addr, uint8_t val) {
+    unsigned banks = mapper->agnes->gamepack.chr_rom_banks_count;
+    if (addr >= 0x8000 && banks > 0) {
+        mapper->chr_bank_offset = (val % banks) * (8 * 1024);
+    }
+}
+
 bool mapper_init(agnes_t *agnes) {
     switch (agnes->gamepack.mapper) {
         case 0: mapper0_init(&agnes->mapper.m0, agnes); return true;
         case 1: mapper1_init(&agnes->mapper.m1, agnes); return true;
         case 2: mapper2_init(&agnes->mapper.m2, agnes); return true;
+        case 3: mapper3_init(&agnes->mapper.m3, agnes); return true;
         case 4: mapper4_init(&agnes->mapper.m4, agnes); return true;
         default: return false;
     }
@@ -2197,6 +2235,7 @@ uint8_t mapper_read(agnes_t *agnes, uint16_t addr) {
         case 0: return mapper0_read(&agnes->mapper.m0, addr);
         case 1: return mapper1_read(&agnes->mapper.m1, addr);
         case 2: return mapper2_read(&agnes->mapper.m2, addr);
+        case 3: return mapper3_read(&agnes->mapper.m3, addr);
         case 4: return mapper4_read(&agnes->mapper.m4, addr);
         default: return 0;
     }
@@ -2207,6 +2246,7 @@ void mapper_write(agnes_t *agnes, uint16_t addr, uint8_t val) {
         case 0: mapper0_write(&agnes->mapper.m0, addr, val); break;
         case 1: mapper1_write(&agnes->mapper.m1, addr, val); break;
         case 2: mapper2_write(&agnes->mapper.m2, addr, val); break;
+        case 3: mapper3_write(&agnes->mapper.m3, addr, val); break;
         case 4: mapper4_write(&agnes->mapper.m4, addr, val); break;
     }
 }

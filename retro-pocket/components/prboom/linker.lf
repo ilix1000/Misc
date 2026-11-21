@@ -1,6 +1,10 @@
 # Put the Doom engine's zero-initialised globals (~59 KB) in PSRAM so the
 # ESP32-S3's internal RAM stays free for Wi-Fi, the display and the emulators.
+# (Only when the build allows .bss in PSRAM; the "safe" build keeps it internal.)
 [mapping:prboom]
 archive: libprboom.a
 entries:
-    * (extram_bss)
+    if SPIRAM_ALLOW_BSS_SEG_EXTERNAL_MEMORY = y:
+        * (extram_bss)
+    else:
+        * (default)

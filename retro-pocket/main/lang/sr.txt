@@ -196,3 +196,33 @@ You lost the cops|Pobegao si policiji
 POCKET CITY|POCKET CITY
 Find a colored pillar to start a job|Nađi obojeni stub za posao
 A: get in|A: uđi
+
+# Web browser
+Internet|Internet
+Browse & download|Pretraži i preuzmi
+Needs Wi-Fi|Treba Wi-Fi
+A Type  B Back  START Menu|A Piši  B Nazad  START Meni
+A Open  B Back  START Menu|A Otvori  B Nazad  START Meni
+B Cancel|B Otkaži
+Can't write to the SD card|Ne mogu da pišem na SD karticu
+Download cancelled|Preuzimanje otkazano
+Download failed|Preuzimanje nije uspelo
+Game saved!|Igra sačuvana!
+File saved!|Fajl sačuvan!
+Start page|Početna
+Web browser|Web pregledač
+Search the web|Pretraži internet
+Type an address|Upiši adresu
+Bookmarks|Obeleživači
+Games you download go to /roms and show up in the menu. Other files go to /downloads.|Preuzete igre idu u /roms i pojavljuju se u meniju. Ostali fajlovi idu u /downloads.
+Text only: no pictures or JavaScript. If a page looks empty, try Simple view in the START menu.|Samo tekst: bez slika i JavaScript-a. Ako je stranica prazna, probaj Jednostavan prikaz u START meniju.
+Wi-Fi card on the home screen|Wi-Fi kartica na početnom ekranu
+Can't open the page|Ne mogu da otvorim stranicu
+Search|Pretraga
+Address|Adresa
+Bookmark added|Obeleživač dodat
+Start page / bookmarks|Početna / obeleživači
+Bookmark this page|Obeleži ovu stranicu
+Save link to SD card|Sačuvaj link na SD
+Simple view (FrogFind)|Jednostavan prikaz (FrogFind)
+Exit browser|Izađi iz pregledača

@@ -1,7 +1,7 @@
 idf_component_register(
     SRCS "main.c" "display.c" "input.c" "gfx.c" "system.c" "storage.c" "launcher.c"
          "romscan.c" "unzip.c" "ui.c" "bridge.c" "wifi.c" "webui.c" "ota.c"
-         "i18n.c" "emu_gb.c" "emu_gbc.c" "emu_nes.c" "emu_sms.c" "emu_pce.c" "emu_doom.c" "video.c" "game_maze.c" "game_city.c" "cores/qrcodegen.c"
+         "i18n.c" "emu_gb.c" "emu_gbc.c" "emu_nes.c" "emu_sms.c" "emu_pce.c" "emu_doom.c" "video.c" "game_maze.c" "game_city.c" "browser.c" "cores/qrcodegen.c"
     INCLUDE_DIRS "."
     EMBED_TXTFILES "web/index.html"
     REQUIRES driver esp_adc fatfs sdmmc nvs_flash esp_timer esp_wifi esp_netif esp_event

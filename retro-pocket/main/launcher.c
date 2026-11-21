@@ -40,7 +40,7 @@
 typedef enum { SCR_HOME, SCR_LIST, SCR_SETTINGS, SCR_WIFI, SCR_NETS, SCR_QR } scr_t;
 
 typedef enum { CARD_RECENT, CARD_FAVS, CARD_NES, CARD_GB, CARD_SMS, CARD_GG, CARD_PCE, CARD_DOOM,
-               CARD_BUILTIN, CARD_WIFI, CARD_SETTINGS, CARD_COUNT } card_t;
+               CARD_BUILTIN, CARD_WEB, CARD_WIFI, CARD_SETTINGS, CARD_COUNT } card_t;
 
 static const struct { const char *title; const uint16_t *icon; uint32_t color; } cards[CARD_COUNT] = {
     [CARD_RECENT]   = { "Recent",    icon_clock, 0x3a7bd5 },
@@ -52,6 +52,7 @@ static const struct { const char *title; const uint16_t *icon; uint32_t color; }
     [CARD_PCE]      = { "PC Engine", icon_pce,   0xd0602a },
     [CARD_DOOM]     = { "Doom",      icon_doom,  0x8a1d12 },
     [CARD_BUILTIN]  = { "Built-in",  icon_cube,  0x7a4fd6 },
+    [CARD_WEB]      = { "Internet",  icon_globe, 0x2f7fd0 },
     [CARD_WIFI]     = { "Wi-Fi",     icon_wifi,  0x2aa6c9 },
     [CARD_SETTINGS] = { "Settings",  icon_gear,  0x6b7090 },
 };
@@ -349,6 +350,7 @@ static void card_subtitle(card_t c, char *out, size_t n)
         case CARD_NES: case CARD_GB: case CARD_SMS: case CARD_GG: case CARD_PCE: case CARD_DOOM:
             k = games_count(card_sys(c)); snprintf(out, n, Tn(k, "%d game", "%d games"), k); break;
         case CARD_BUILTIN: snprintf(out, n, Tn(BUILTIN_COUNT, "%d game", "%d games"), BUILTIN_COUNT); break;
+        case CARD_WEB: snprintf(out, n, "%s", T(wifi_state() == WIFI_CONNECTED ? "Browse & download" : "Needs Wi-Fi")); break;
         case CARD_WIFI:
             switch (wifi_state()) {
                 case WIFI_CONNECTED: { char ip[16]; wifi_ip(ip, sizeof(ip)); snprintf(out, n, "%s", ip); break; }
@@ -693,6 +695,11 @@ static void open_card(card_t c)
 {
     switch (c) {
         case CARD_WIFI: list_reset(&S.wifi); push(SCR_WIFI); break;
+        case CARD_WEB:
+            bridge_clear_quit();
+            if (browser_run()) rescan();
+            after_game();
+            break;
         case CARD_SETTINGS: list_reset(&S.settings); push(SCR_SETTINGS); break;
         default:
             if (S.list_card != c) list_reset(&S.list);

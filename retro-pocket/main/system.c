@@ -61,7 +61,7 @@ void save_path(char *out, size_t n, const char *rom_path, const char *sys, const
 
 static uint16_t *s_snapshot;
 
-static void snapshot_take(void)
+void snapshot_take(void)
 {
     if (!s_snapshot) s_snapshot = heap_caps_malloc(LCD_WIDTH * LCD_HEIGHT * 2, MALLOC_CAP_SPIRAM);
     if (!s_snapshot) return;
@@ -70,7 +70,7 @@ static void snapshot_take(void)
     gfx_dim(s_snapshot);
 }
 
-static void snapshot_draw(uint16_t *fb)
+void snapshot_draw(uint16_t *fb)
 {
     if (s_snapshot) memcpy(fb, s_snapshot, LCD_WIDTH * LCD_HEIGHT * 2);
     else gfx_fill(fb, C_BG);

@@ -48,6 +48,9 @@ typedef enum {
  * save/load state entries for systems that don't support them. */
 ingame_action_t ingame_menu(const char *title, bool has_states);
 /* Shows a message box until a button is pressed (or ms elapses if ms > 0). */
+/* copy of the current screen, drawn behind pop-ups */
+void snapshot_take(void);
+void snapshot_draw(uint16_t *fb);
 void message_box(const char *line1, const char *line2, int ms);
 
 /* Frame pacing: call once per frame with the system's target frame time. */

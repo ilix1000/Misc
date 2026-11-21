@@ -143,6 +143,23 @@ can't be reached for 20 seconds, the hotspot comes back automatically so you're 
 
 The web UI has no password, so anyone on the same Wi-Fi can use it. Only use it on networks you trust.
 
+## Web browser
+
+The **Internet** card on the home screen opens a text web browser (like
+Lynx). It needs Wi-Fi with internet.
+
+- Pages show as text with links; forms such as search boxes work. No pictures
+  and no JavaScript, so very modern sites can look empty - START > *Simple
+  view (FrogFind)* runs any page through a simplifier.
+- Stick up/down scrolls, left/right picks the previous/next link, A opens,
+  B goes back, SELECT pages down, START opens the menu (search, type an
+  address, bookmarks, save link to SD card, exit).
+- Anything that isn't a web page is **saved to the SD card**: games (`.nes`,
+  `.gb`, `.gbc`, `.sms`, `.gg`, `.pce`, `.wad`, `.zip`) go to `/roms` and
+  show up in the menu right away; everything else goes to `/downloads`.
+- Bookmarks you add are stored in `/saves/bookmarks.txt` (`Title|URL` lines).
+- Cyrillic text is shown in Serbian Latin; č ć đ š ž display properly.
+
 ## Language / Jezik
 
 Settings → **Language** switches the whole device between English and
@@ -291,6 +308,7 @@ main/emu_pce.c     PC Engine front-end
 main/emu_doom.c    Doom platform layer (video, input, WAD handling)
 main/video.c       shared scaler + second-core display for the Retro-Go cores
 components/        SMS Plus, PCE-GO and PrBoom (GPLv2, from Retro-Go) + rg_compat shim
+main/browser.c     Text web browser + downloads to the SD card
 main/game_city.c   Pocket City (open-world driving, own flat-shaded 3D renderer)
 main/game_maze.c   Maze Runner 3D
 main/cores/        third-party code: Peanut-GB, agnes, qrcodegen (all MIT)

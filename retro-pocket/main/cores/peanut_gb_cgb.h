@@ -3718,11 +3718,14 @@ void __gb_step_cpu(struct gb_s *gb)
 
 		/* LCD Timing */
 #if PEANUT_FULL_GBC_SUPPORT
-        if (inst_cycles > 1)
-            gb->counter.lcd_count += (inst_cycles >> gb->cgb.doubleSpeed);
-        else
-#endif
+		if (inst_cycles > 1) {
+			gb->counter.lcd_count += (inst_cycles >> gb->cgb.doubleSpeed);
+		} else {
+			gb->counter.lcd_count += inst_cycles;
+		}
+#else
 		gb->counter.lcd_count += inst_cycles;
+#endif
 
 		/* New Scanline */
 		if(gb->counter.lcd_count >= LCD_LINE_CYCLES)

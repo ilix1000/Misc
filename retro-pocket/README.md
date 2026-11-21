@@ -17,7 +17,7 @@ you only flash it by USB once.
 | System      | Core | Notes |
 |-------------|------|-------|
 | NES         | [agnes](https://github.com/kgabis/agnes) (MIT) | Mappers 0, 1, 2, 3, 4 (NROM, MMC1, UxROM, CNROM, MMC3). Fast scanline renderer, frame-skip when needed, display on the second core. Save states, battery saves. |
-| Game Boy / Color | [Peanut-GB](https://github.com/deltabeard/Peanut-GB) + its [Color fork](https://github.com/froggestspirit/Peanut-GB) (MIT) | Original Game Boy games on the accurate core (passes Blargg's `cpu_instrs` and dmg-acid2), Game Boy Color games (`.gbc`, Color-only or Color-enhanced) on the Color core, picked automatically. 5 palettes for original games, save states, battery saves. |
+| Game Boy / Color | [Peanut-GB](https://github.com/deltabeard/Peanut-GB) + its official [Color branch](https://github.com/deltabeard/Peanut-GB/tree/cgb) (MIT) | Original Game Boy games on the accurate core (passes Blargg's `cpu_instrs` and dmg-acid2), Game Boy Color games (`.gbc`, Color-only or Color-enhanced) on the Color core, picked automatically. 5 palettes for original games, save states, battery saves. |
 | Built-in    | Maze Runner 3D | An original first-person 3D maze game (raycaster) with analog movement, so you get some 3D on the device. |
 
 There is no sound yet, because the parts list has no speaker. See "Ideas" below.

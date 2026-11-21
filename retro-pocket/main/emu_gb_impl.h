@@ -1,7 +1,7 @@
 /*
  * emu_gb_impl.h - Game Boy front-end, compiled twice:
  *   emu_gb.c  with Peanut-GB          (original Game Boy, most accurate)
- *   emu_gbc.c with the Peanut-GB fork (Game Boy Color support)
+ *   emu_gbc.c with Peanut-GB's Color branch (Game Boy Color games)
  * The including file defines GB_CGB, GB_STATE_MAGIC and GB_RUN_DECL.
  */
 typedef struct {
@@ -179,9 +179,7 @@ static bool state_load(struct gb_s *gb, const char *rom_path)
         tmp->gb_error = gb->gb_error;
         tmp->gb_serial_tx = gb->gb_serial_tx;
         tmp->gb_serial_rx = gb->gb_serial_rx;
-#if !GB_CGB
         tmp->gb_bootrom_read = gb->gb_bootrom_read;
-#endif
         tmp->display.lcd_draw_line = gb->display.lcd_draw_line;
         tmp->direct.priv = gb->direct.priv;
         memcpy(gb, tmp, sizeof(*gb));

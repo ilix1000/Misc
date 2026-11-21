@@ -3,7 +3,7 @@
  *
  * Original Game Boy games run on Peanut-GB (MIT, cores/peanut_gb.h), the most
  * accurate core. Games marked as Color (header byte 0x143 bit 7, e.g. GTA 2)
- * go to the Color-capable fork in emu_gbc.c.
+ * go to Peanut-GB's official Color branch in emu_gbc.c.
  *
  * 160x144 is squeezed to 160x128 by dropping 1 line in 9 (nearest
  * neighbour), so the full picture stays visible.

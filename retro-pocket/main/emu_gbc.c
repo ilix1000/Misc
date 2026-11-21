@@ -1,7 +1,8 @@
 /*
- * emu_gbc.c - Game Boy Color games, on froggestspirit's Color-capable fork of
- * Peanut-GB (MIT, cores/peanut_gbc.h). Its functions share names with the
- * original core, so they're renamed here to live side by side.
+ * emu_gbc.c - Game Boy Color games, on the official Game Boy Color branch of
+ * Peanut-GB (MIT, cores/peanut_gb_cgb.h). Its functions share names with the
+ * original-Game Boy core in emu_gb.c, so they're renamed here to live side by
+ * side.
  */
 #include <stdio.h>
 #include <string.h>
@@ -20,16 +21,19 @@
 #define gb_init_serial gbc_gb_init_serial
 #define gb_reset gbc_gb_reset
 #define gb_run_frame gbc_gb_run_frame
+#define gb_set_bootrom gbc_gb_set_bootrom
 #define gb_set_rtc gbc_gb_set_rtc
 #define gb_tick_rtc gbc_gb_tick_rtc
 
 #define ENABLE_SOUND 0
-#include "cores/peanut_gbc.h"
+#define PEANUT_FULL_GBC_SUPPORT 1
+#define PEANUT_GB_HIGH_LCD_ACCURACY 1
+#include "cores/peanut_gb_cgb.h"
 #undef LCD_WIDTH
 #undef LCD_HEIGHT
 #define LCD_HEIGHT_GB 144
 
-/* same joypad bit layout as Peanut-GB, the fork just doesn't name them */
+/* same joypad bit layout as Peanut-GB, this branch just doesn't name them */
 #define JOYPAD_A      0x01
 #define JOYPAD_B      0x02
 #define JOYPAD_SELECT 0x04

@@ -3,6 +3,11 @@
 /* Every "system" the launcher knows about. To add one, write a
  * void my_run(const char *path) and add a row in launcher.c. */
 void emu_gb_run(const char *path);
+/* internal: the Game Boy Color core (emu_gbc.c); takes ownership of rom */
+#include <stddef.h>
+#include <stdint.h>
+void emu_gbc_run(const char *path, uint8_t *rom, size_t size);
+size_t gb_cart_ram_size(const uint8_t *rom, size_t size);
 void emu_nes_run(const char *path);
 void game_maze_run(const char *unused);
 

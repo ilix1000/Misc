@@ -38,13 +38,17 @@
 
 typedef enum { SCR_HOME, SCR_LIST, SCR_SETTINGS, SCR_WIFI, SCR_NETS, SCR_QR } scr_t;
 
-typedef enum { CARD_RECENT, CARD_FAVS, CARD_NES, CARD_GB, CARD_BUILTIN, CARD_WIFI, CARD_SETTINGS, CARD_COUNT } card_t;
+typedef enum { CARD_RECENT, CARD_FAVS, CARD_NES, CARD_GB, CARD_SMS, CARD_GG, CARD_PCE,
+               CARD_BUILTIN, CARD_WIFI, CARD_SETTINGS, CARD_COUNT } card_t;
 
 static const struct { const char *title; const uint16_t *icon; uint32_t color; } cards[CARD_COUNT] = {
     [CARD_RECENT]   = { "Recent",    icon_clock, 0x3a7bd5 },
     [CARD_FAVS]     = { "Favorites", icon_star,  0xd99a1e },
     [CARD_NES]      = { "NES",       icon_nes,   0xc8303c },
     [CARD_GB]       = { "Game Boy",  icon_gb,    0x4f9a3c },
+    [CARD_SMS]      = { "Master System", icon_sms, 0x2b55c4 },
+    [CARD_GG]       = { "Game Gear", icon_gg,    0x3a3f4a },
+    [CARD_PCE]      = { "PC Engine", icon_pce,   0xd0602a },
     [CARD_BUILTIN]  = { "Built-in",  icon_cube,  0x7a4fd6 },
     [CARD_WIFI]     = { "Wi-Fi",     icon_wifi,  0x2aa6c9 },
     [CARD_SETTINGS] = { "Settings",  icon_gear,  0x6b7090 },
@@ -110,15 +114,43 @@ static void list_reset(list_t *l)
 
 /* ---------------- list contents ---------------- */
 
+static sys_t card_sys(card_t c)
+{
+    switch (c) {
+        case CARD_NES: return SYS_NES;
+        case CARD_GB:  return SYS_GB;
+        case CARD_SMS: return SYS_SMS;
+        case CARD_GG:  return SYS_GG;
+        case CARD_PCE: return SYS_PCE;
+        default: return SYS_NONE;
+    }
+}
+
+static const uint16_t *sys_icon(int sys)
+{
+    switch (sys) {
+        case SYS_NES: return icon_nes;
+        case SYS_GB:  return icon_gb;
+        case SYS_SMS: return icon_sms;
+        case SYS_GG:  return icon_gg;
+        case SYS_PCE: return icon_pce;
+        default: return icon_cube;
+    }
+}
+
+static const char *sys_tag(int sys)
+{
+    static const char *const t[SYS_COUNT] = { "", "NES", "GB", "SMS", "GG", "PCE" };
+    return sys > 0 && sys < SYS_COUNT ? t[sys] : "";
+}
+
 static int game_list_count(card_t c)
 {
     switch (c) {
         case CARD_RECENT: return lib_recent_count();
         case CARD_FAVS: return lib_fav_count();
-        case CARD_NES: return games_count(SYS_NES);
-        case CARD_GB: return games_count(SYS_GB);
         case CARD_BUILTIN: return BUILTIN_COUNT;
-        default: return 0;
+        default: return card_sys(c) ? games_count(card_sys(c)) : 0;
     }
 }
 
@@ -127,9 +159,7 @@ static const game_t *game_list_get(card_t c, int i)
     switch (c) {
         case CARD_RECENT: return lib_recent_get(i);
         case CARD_FAVS: return lib_fav_get(i);
-        case CARD_NES: return games_get(SYS_NES, i);
-        case CARD_GB: return games_get(SYS_GB, i);
-        default: return NULL;
+        default: return card_sys(c) ? games_get(card_sys(c), i) : NULL;
     }
 }
 
@@ -309,8 +339,8 @@ static void card_subtitle(card_t c, char *out, size_t n)
     switch (c) {
         case CARD_RECENT: k = lib_recent_count(); snprintf(out, n, k ? "%d played" : "Nothing yet", k); break;
         case CARD_FAVS:   k = lib_fav_count(); snprintf(out, n, k ? "%d games" : "START to add", k); break;
-        case CARD_NES:    k = games_count(SYS_NES); snprintf(out, n, "%d game%s", k, k == 1 ? "" : "s"); break;
-        case CARD_GB:     k = games_count(SYS_GB); snprintf(out, n, "%d game%s", k, k == 1 ? "" : "s"); break;
+        case CARD_NES: case CARD_GB: case CARD_SMS: case CARD_GG: case CARD_PCE:
+            k = games_count(card_sys(c)); snprintf(out, n, "%d game%s", k, k == 1 ? "" : "s"); break;
         case CARD_BUILTIN: snprintf(out, n, "%d game", BUILTIN_COUNT); break;
         case CARD_WIFI:
             switch (wifi_state()) {
@@ -396,7 +426,7 @@ static void game_row(int i, char *label, char *value, size_t n, const uint16_t *
     if (!g) { label[0] = 0; return; }
     snprintf(label, 128, "%s", g->name);
     if (S.list_card == CARD_RECENT || S.list_card == CARD_FAVS)
-        snprintf(value, n, "%s", g->sys == SYS_NES ? "NES" : "GB");
+        snprintf(value, n, "%s", sys_tag(g->sys));
     if (lib_is_fav(g->path)) *icon = icon_smallstar;
 }
 
@@ -609,9 +639,13 @@ static void play_game(const game_t *g)
     lib_add_recent(path);
     bridge_set_now_playing(name);
     bridge_clear_quit();
-    loading_screen(name, sys == SYS_NES ? icon_nes : icon_gb);
-    if (sys == SYS_NES) emu_nes_run(path);
-    else emu_gb_run(path);
+    loading_screen(name, sys_icon(sys));
+    switch (sys) {
+        case SYS_NES: emu_nes_run(path); break;
+        case SYS_SMS: case SYS_GG: emu_sms_run(path); break;
+        case SYS_PCE: emu_pce_run(path); break;
+        default: emu_gb_run(path); break;
+    }
     after_game();
 }
 
@@ -831,8 +865,10 @@ void launcher_run(void)
     splash();
     rescan();
     /* start on the first card that has something in it */
-    S.home_sel = lib_recent_count() ? CARD_RECENT : games_count(SYS_NES) ? CARD_NES
-               : games_count(SYS_GB) ? CARD_GB : CARD_BUILTIN;
+    S.home_sel = CARD_BUILTIN;
+    if (lib_recent_count()) S.home_sel = CARD_RECENT;
+    else for (int c = CARD_NES; c <= CARD_PCE; c++)
+        if (games_count(card_sys(c))) { S.home_sel = c; break; }
     S.home_cam = S.home_sel;
     S.dots_x = S.home_sel * 7;
     ui_dt();

@@ -130,7 +130,7 @@ void settings_save(void) {}
 bool sd_ok(void) { return true; }
 bool sd_init(void)
 {
-    const char *d[] = { SD_MOUNT, DIR_ROMS, DIR_ROMS "/nes", DIR_ROMS "/gb", DIR_SAVES, DIR_SAVES "/nes", DIR_SAVES "/gb" };
+    const char *d[] = { SD_MOUNT, DIR_ROMS, DIR_SAVES, DIR_SAVES "/nes", DIR_SAVES "/gb", DIR_SAVES "/sms", DIR_SAVES "/pce" };
     for (int i = 0; i < 7; i++) mkdir(d[i], 0777);
     return true;
 }

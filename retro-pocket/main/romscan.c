@@ -22,13 +22,18 @@ static const char *TAG = "scan";
 #define MAX_GAMES   4000
 #define POOL_SIZE   (1024 * 1024)   /* path + name strings */
 #define MAX_DEPTH   6
-#define CACHE_FILE  DIR_SAVES "/zipcache.txt"
+/* v2: bump the name whenever the list of systems changes, so zips that
+ * held a newly supported system get looked at again. */
+#define CACHE_FILE  DIR_SAVES "/zipcache2.txt"
 
 static const char *const sys_exts[SYS_COUNT] = {
     [SYS_NES] = ".nes",
     [SYS_GB]  = ".gb .gbc .dmg",
+    [SYS_SMS] = ".sms .sg",
+    [SYS_GG]  = ".gg",
+    [SYS_PCE] = ".pce",
 };
-#define ALL_ROM_EXTS ".nes .gb .gbc .dmg"
+#define ALL_ROM_EXTS ".nes .gb .gbc .dmg .sms .sg .gg .pce"
 
 static game_t *s_games[SYS_COUNT];
 static int s_count[SYS_COUNT];
@@ -350,6 +355,9 @@ const char *sys_name(int sys)
     switch (sys) {
         case SYS_NES: return "NES";
         case SYS_GB: return "Game Boy";
+        case SYS_SMS: return "Master System";
+        case SYS_GG: return "Game Gear";
+        case SYS_PCE: return "PC Engine";
         default: return "?";
     }
 }
@@ -387,8 +395,9 @@ void games_scan(scan_progress_fn progress)
     for (int i = 0; i < cached && !s_zc_dirty; i++)
         if (!s_zc[i].used) s_zc_dirty = true;
     if (s_zc_dirty) zc_save();
-    ESP_LOGI(TAG, "%d files, %d NES, %d GB in %d ms", s_files_seen, s_count[SYS_NES],
-             s_count[SYS_GB], (int)((esp_timer_get_time() - t0) / 1000));
+    ESP_LOGI(TAG, "%d files, %d NES, %d GB, %d SMS, %d GG, %d PCE in %d ms", s_files_seen,
+             s_count[SYS_NES], s_count[SYS_GB], s_count[SYS_SMS], s_count[SYS_GG], s_count[SYS_PCE],
+             (int)((esp_timer_get_time() - t0) / 1000));
     lists_load();
     lib_unlock();
 }

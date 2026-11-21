@@ -18,6 +18,9 @@ you only flash it by USB once.
 |-------------|------|-------|
 | NES         | [agnes](https://github.com/kgabis/agnes) (MIT) | Mappers 0, 1, 2, 3, 4 (NROM, MMC1, UxROM, CNROM, MMC3). Fast scanline renderer, frame-skip when needed, display on the second core. Save states, battery saves. |
 | Game Boy / Color | [Peanut-GB](https://github.com/deltabeard/Peanut-GB) + its official [Color branch](https://github.com/deltabeard/Peanut-GB/tree/cgb) (MIT) | Original Game Boy games on the accurate core (passes Blargg's `cpu_instrs` and dmg-acid2), Game Boy Color games (`.gbc`, Color-only or Color-enhanced) on the Color core, picked automatically. 5 palettes for original games, save states, battery saves. |
+| Master System / SG-1000 | [SMS Plus](https://github.com/ducalex/retro-go) (GPLv2, via Retro-Go) | `.sms` `.sg`. Pad = d-pad + 2 buttons, so it maps 1:1. Save states, battery saves. |
+| Game Gear   | SMS Plus (GPLv2) | `.gg`. Full 160x144 screen, own colour palette. Save states, battery saves. |
+| PC Engine / TurboGrafx-16 | [PCE-GO](https://github.com/ducalex/retro-go) (GPLv2, via Retro-Go) | `.pce` HuCards (not CD games). Pad = d-pad, I, II, Select, Run: maps 1:1. Save states. |
 | Built-in    | Maze Runner 3D | An original first-person 3D maze game (raycaster) with analog movement, so you get some 3D on the device. |
 
 There is no sound yet, because the parts list has no speaker. See "Ideas" below.
@@ -88,6 +91,13 @@ The buttons use the chip's internal pull-ups, so you don't need resistors.
 | In game | Stick           | D-pad |
 |       | A, B, START, SELECT | Same as the console |
 |       | **Click stick**    | Pause menu: Resume, Save state, Load state, Reset, Quit |
+| NES / Game Boy | A, B, START, SELECT | Same as the console |
+| Master System | A / B      | Button 2 / Button 1 |
+|       | START / SELECT     | Pause / Start (Mark III / SMS2 games) |
+| Game Gear | A / B          | Button 2 / Button 1 |
+|       | START              | Start |
+| PC Engine | A / B          | I / II |
+|       | START / SELECT     | Run / Select |
 | Maze Runner 3D | Stick     | Walk / turn (analog) |
 |       | A (hold)           | Sprint |
 |       | B (hold)           | Strafe instead of turning |
@@ -149,7 +159,7 @@ source (repo, branch, folder) can be changed there too.
 
 Details:
 
-- A zip counts as a game if it has a `.nes`, `.gb`, `.gbc` or `.dmg` file inside,
+- A zip counts as a game if it has a `.nes`, `.gb`, `.gbc`, `.dmg`, `.sms`, `.sg`, `.gg` or `.pce` file inside,
   even in a subfolder of the zip and next to readme files. The game shows up
   under the **zip's** name.
 - `.7z` and `.rar` aren't supported. Re-zip them as `.zip` on your computer.
@@ -253,6 +263,10 @@ main/system.c      pause menu, message boxes, frame pacing, file helpers
 main/storage.c     SD card mount, settings in flash (NVS)
 main/emu_gb.c      Game Boy front-end
 main/emu_nes.c     NES front-end
+main/emu_sms.c     Master System / Game Gear / SG-1000 front-end
+main/emu_pce.c     PC Engine front-end
+main/video.c       shared scaler + second-core display for the Retro-Go cores
+components/        SMS Plus and PCE-GO (GPLv2, from Retro-Go) + rg_compat shim
 main/game_maze.c   Maze Runner 3D
 main/cores/        third-party code: Peanut-GB, agnes, qrcodegen (all MIT)
 tools/gen_font.py  generates the 5x7 UI font
@@ -266,5 +280,19 @@ To add a system: write a `void my_run(const char *path)` that loads with `rom_lo
 ## Ideas / next steps
 
 - **Sound:** add a MAX98357A I2S amp and a small speaker. Peanut-GB has an audio hook, and agnes would need an APU.
-- **More systems:** Sega Master System / Game Gear (smsplus) or Game Boy Color (e.g. a GBC-capable fork of Peanut-GB).
+- **More systems:** Atari 2600/7800 or Lynx would also fit 2 buttons; Mega Drive needs 3+ buttons and more CPU than this chip has.
 - **Battery:** a LiPo with a TP4056 charger, and battery voltage read on an ADC pin.
+
+## License
+
+Retro Pocket's own code is yours to use. The firmware also includes
+third-party emulator cores:
+
+| Part | License |
+|------|---------|
+| Peanut-GB (+ Color branch), agnes, qrcodegen | MIT |
+| SMS Plus, PCE-GO (`components/`) | GPLv2 (from Retro-Go) |
+
+Because the GPLv2 cores are linked in, the **firmware binary as a whole is
+GPLv2**: if you give the `.bin` to others, also offer them this source (keeping
+this repo public does that). The cores' original license files are in their folders.

@@ -49,6 +49,7 @@ nav button.on{color:var(--accent)}
 .list>div:last-child{border-bottom:0}
 .badge{font-size:11px;padding:2px 7px;border-radius:20px;background:var(--panel2);color:var(--dim);white-space:nowrap}
 .badge.nes{background:#5a1d24;color:#ffb3b3}.badge.gb{background:#1f4a2c;color:#b6f0c4}
+.badge.sms{background:#1d2f66;color:#b8c8ff}.badge.gg{background:#33363f;color:#d6d9e3}.badge.pce{background:#5e2e12;color:#ffc9a8}
 .star{background:none;border:0;font-size:20px;padding:4px;color:#555b7a}
 .star.on{color:var(--accent)}
 .chips{display:flex;gap:6px;overflow-x:auto;margin:10px 0}
@@ -115,8 +116,8 @@ a{color:var(--accent)}
   <div class="card list" id="games"><div class="muted">Loading…</div></div>
   <h2>Add games</h2>
   <div class="card">
-    <div class="drop" id="gdrop">Drop <b>.zip .nes .gb .gbc</b> files here or <a href="#" onclick="gfile.click();return false">choose files</a><br><span class="muted">They go to /roms and show up right away.</span></div>
-    <input type="file" id="gfile" multiple accept=".zip,.nes,.gb,.gbc,.dmg" hidden>
+    <div class="drop" id="gdrop">Drop <b>.zip .nes .gb .gbc .sms .gg .pce</b> files here or <a href="#" onclick="gfile.click();return false">choose files</a><br><span class="muted">They go to /roms and show up right away.</span></div>
+    <input type="file" id="gfile" multiple accept=".zip,.nes,.gb,.gbc,.dmg,.sms,.sg,.gg,.pce" hidden>
     <div id="gprog"></div>
   </div>
 </section>
@@ -252,12 +253,14 @@ addEventListener('keyup',e=>{if(!(e.code in KEYMAP))return;kbKeys&=~KEYMAP[e.cod
 /* ---------- games ---------- */
 let games=[],recent=[],filter='all';
 async function loadGames(){try{const j=await api('/api/games');games=j.games;recent=j.recent;renderGames()}catch(e){$('games').innerHTML='<div class="muted">Couldn\'t load games</div>'}}
-function renderGames(){const f=[['all','All'],['1','NES'],['2','Game Boy'],['fav','★ Favorites'],['recent','Recent']];
+const SYS={1:['NES','nes'],2:['GB','gb'],3:['SMS','sms'],4:['GG','gg'],5:['PCE','pce']};
+function renderGames(){const f=[['all','All'],['1','NES'],['2','Game Boy'],['3','Master System'],['4','Game Gear'],['5','PC Engine'],['fav','★ Favorites'],['recent','Recent']]
+ .filter(([k])=>!(+k)||games.some(g=>g.sys==k));
  $('chips').innerHTML=f.map(([k,n])=>`<button class="${filter==k?'on':''}" onclick="filter='${k}';renderGames()">${n}</button>`).join('');
  const q=$('q').value.toLowerCase();let l=filter=='recent'?recent:games;
  l=l.filter(g=>(filter=='all'||filter=='recent'||(filter=='fav'?g.fav:g.sys==filter))&&g.name.toLowerCase().includes(q));
  $('games').innerHTML=l.length?l.slice(0,400).map(g=>`<div><button class="star ${g.fav?'on':''}" onclick='fav(${JSON.stringify(g.path)},${!g.fav})'>★</button>
- <div class="grow ell">${esc(g.name)}</div><span class="badge ${g.sys==1?'nes':'gb'}">${g.sys==1?'NES':'GB'}</span>
+ <div class="grow ell">${esc(g.name)}</div><span class="badge ${(SYS[g.sys]||['?',''])[1]}">${(SYS[g.sys]||['?'])[0]}</span>
  <button class="small primary" onclick='play(${JSON.stringify(g.path)},${JSON.stringify(g.name)})'>▶</button></div>`).join(''):
  `<div class="muted">${games.length?'Nothing matches.':'No games yet: add some below.'}</div>`}
 function play(p,n){post('/api/launch?path='+encodeURIComponent(p)).then(()=>{toast('Starting '+n);show('play')})}
@@ -317,7 +320,7 @@ function saveSrc(){post('/api/settings',{ota_repo:$('orepo').value,ota_branch:$(
 /* ---------- system & OTA ---------- */
 function fmtUp(s){const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?`${h}h ${m}m`:`${m}m ${s%60}s`}
 function renderSystem(){const i=info;$('curver').textContent='v'+i.version;
- $('sysgrid').innerHTML=[['Firmware','v'+i.version],['IP address',i.ip||(i.hotspot?'192.168.4.1':'-')],['Uptime',fmtUp(i.uptime)],['Games',`${i.nes} NES · ${i.gb} GB`],
+ $('sysgrid').innerHTML=[['Firmware','v'+i.version],['IP address',i.ip||(i.hotspot?'192.168.4.1':'-')],['Uptime',fmtUp(i.uptime)],['Games',[[i.nes,'NES'],[i.gb,'GB'],[i.sms,'SMS'],[i.gg,'GG'],[i.pce,'PCE']].filter(([n])=>n).map(([n,t])=>n+' '+t).join(' · ')||'none'],
  ['Free RAM',size(i.heap)],['Free PSRAM',size(i.psram)]].map(([k,v])=>`<div class="stat"><span class="muted">${k}</span><b>${esc(v)}</b></div>`).join('');
  if(i.sd_total){$('sdtxt').textContent=`${size(i.sd_total-i.sd_free)} used of ${size(i.sd_total)}`;$('sdbar').style.width=((1-i.sd_free/i.sd_total)*100)+'%'}else $('sdtxt').textContent='no card';
  const o=i.ota;if(o.message)$('otamsg').textContent=o.message;else if(o.rollback)$('otamsg').innerHTML='⚠ '+esc(o.rollback);$('instbtn').style.display=o.available==1&&o.phase=='idle'?'':'none';

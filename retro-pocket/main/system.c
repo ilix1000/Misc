@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "system.h"
+#include "i18n.h"
 #include "board.h"
 #include "gfx.h"
 #include "input.h"
@@ -129,7 +130,7 @@ ingame_action_t ingame_menu(const char *title, bool has_states)
         gfx_text(fb, x + 6, y + 4, title, C_ACCENT, (w - 12) / CHAR_W);
         gfx_round_rect(fb, x + 4, y + 17 + (int)hl, w - 8, 12, C_SEL);
         for (int i = 0; i < n; i++)
-            gfx_text(fb, x + 12, y + 19 + i * 13, items[idx[i]].label, i == sel ? C_TEXT : C_DIM, 0);
+            gfx_text(fb, x + 12, y + 19 + i * 13, T(items[idx[i]].label), i == sel ? C_TEXT : C_DIM, 0);
         gfx_set_origin(0, 0);
         ui_draw_toast(fb, dt);
         display_present();
@@ -156,8 +157,8 @@ void message_box(const char *line1, const char *line2, int ms)
         gfx_round_rect(fb, bx - 1, by - 1, bw + 2, bh + 2, C_ACCENT);
         gfx_round_rect(fb, bx, by, bw, bh, RGB(24, 27, 46));
         if (open > 0.5f) {
-            gfx_text_center(fb, by + 10, line1, C_TEXT);
-            if (line2) gfx_text_center(fb, by + 22, line2, C_DIM);
+            gfx_text_center(fb, by + 10, T(line1), C_TEXT);
+            if (line2) gfx_text_center(fb, by + 22, T(line2), C_DIM);
         }
         display_present();
         input_poll();

@@ -7,6 +7,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include "system.h"
+#include "i18n.h"
 #include "board.h"
 #include "nvs_flash.h"
 #include "nvs.h"
@@ -37,6 +38,7 @@ void settings_load(void)
     g_settings.rotation &= 3;
     g_settings.stick_rot &= 3;
     if (g_settings.gb_palette < 0 || g_settings.gb_palette > 4) g_settings.gb_palette = 0;
+    if (g_settings.lang < 0 || g_settings.lang >= LANG_COUNT) g_settings.lang = LANG_EN;
 }
 
 /* Reads a struct saved by any firmware version. Settings structs only ever

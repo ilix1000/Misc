@@ -14,6 +14,7 @@ typedef struct {
     int stick_rot;    /* joystick turned by 0/90/180/270 degrees */
     int swap_rb;      /* 0/1, swaps red and blue on the panel */
     int ui_anim;      /* 0/1, menu animations */
+    int lang;         /* LANG_* from i18n.h (append new fields below) */
 } settings_t;
 
 extern settings_t g_settings;

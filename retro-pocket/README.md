@@ -136,6 +136,15 @@ can't be reached for 20 seconds, the hotspot comes back automatically so you're 
 
 The web UI has no password, so anyone on the same Wi-Fi can use it. Only use it on networks you trust.
 
+## Language / Jezik
+
+Settings → **Language** switches the whole device between English and
+**Srpski** (Serbian, Latin script) instantly; the web UI follows the same
+setting (or pick it under Settings in the web UI). Translations live in
+`main/lang/sr.txt` (one `English|Srpski` line per phrase) - edit it, then run
+`python3 tools/gen_i18n.py` to regenerate `main/i18n_sr.h`. The font has
+č ć đ š ž (and capitals) as extra glyphs, added in `tools/gen_font.py`.
+
 ## Firmware updates over Wi-Fi
 
 After the first USB flash of v2.0, you never need the cable again:

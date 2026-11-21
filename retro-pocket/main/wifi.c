@@ -10,6 +10,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "wifi.h"
+#include "i18n.h"
 #include "bridge.h"
 #include "lock.h"
 #include "esp_wifi.h"
@@ -97,7 +98,7 @@ static void hotspot(bool on, bool pinned)
     apply_mode();
     if (on) {
         char m[64];
-        snprintf(m, sizeof(m), "Hotspot %s on", s_ap_ssid);
+        snprintf(m, sizeof(m), T("Hotspot %s on"), s_ap_ssid);
         bridge_toast(m);
     }
 }
@@ -175,7 +176,7 @@ static void on_event(void *arg, esp_event_base_t base, int32_t id, void *data)
         s_retries = 0;
         esp_timer_stop(s_fallback_timer);
         char m[64];
-        snprintf(m, sizeof(m), "Wi-Fi connected: %s", s_ip);
+        snprintf(m, sizeof(m), T("Wi-Fi connected: %s"), s_ip);
         bridge_toast(m);
         ESP_LOGI(TAG, "%s", m);
         if (s_ap_on && !s_ap_pinned) {

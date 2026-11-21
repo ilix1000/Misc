@@ -10,6 +10,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "emulators.h"
+#include "i18n.h"
 #include "romscan.h"
 #include "system.h"
 #include "bridge.h"
@@ -199,7 +200,7 @@ void emu_nes_run(const char *path)
     if (!nes) { free(rom); message_box("Out of memory", NULL, 0); return; }
     if (!agnes_load_ines_data(nes, rom, size)) {
         char m[32];
-        snprintf(m, sizeof(m), "Mapper %d", size >= 8 ? ((rom[6] >> 4) | (rom[7] & 0xF0)) : -1);
+        snprintf(m, sizeof(m), T("Mapper %d"), size >= 8 ? ((rom[6] >> 4) | (rom[7] & 0xF0)) : -1);
         agnes_destroy(nes);
         free(rom);
         message_box("Unsupported ROM", m, 0);

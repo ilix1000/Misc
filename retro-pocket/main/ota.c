@@ -11,6 +11,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "ota.h"
+#include "i18n.h"
 #include "version.h"
 #include "bridge.h"
 #include "lock.h"
@@ -80,7 +81,7 @@ void ota_mark_valid(void)
     if (esp_ota_get_state_partition(run, &st) == ESP_OK && st == ESP_OTA_IMG_PENDING_VERIFY) {
         esp_ota_mark_app_valid_cancel_rollback();
         ESP_LOGI(TAG, "new firmware %s confirmed", FW_VERSION);
-        bridge_toast("Updated to v" FW_VERSION);
+        { char m[48]; snprintf(m, sizeof(m), T("Updated to v%s"), FW_VERSION); bridge_toast(m); }
     }
 }
 
@@ -91,7 +92,7 @@ static void set_status(ota_phase_t p, int pct, const char *msg)
     lib_lock();
     s_st.phase = p;
     s_st.percent = pct;
-    if (msg) snprintf(s_st.message, sizeof(s_st.message), "%.63s", msg);
+    if (msg) snprintf(s_st.message, sizeof(s_st.message), "%.63s", T(msg));
     lib_unlock();
 }
 
@@ -180,9 +181,9 @@ static void online_task(void *arg)
     if (!fetch_version(ver, sizeof(ver), &status)) {
         char m[64];
         if (status == 404 || status == 401 || status == 403)
-            snprintf(m, sizeof(m), "GitHub said %d (private repo? add a token)", status);
+            snprintf(m, sizeof(m), T("GitHub said %d (private repo? add a token)"), status);
         else
-            snprintf(m, sizeof(m), status ? "GitHub error %d" : "No internet connection", status);
+            snprintf(m, sizeof(m), T(status ? "GitHub error %d" : "No internet connection"), status);
         set_status(OTA_FAILED, 0, m);
         s_available = -1;
         goto out;
@@ -192,12 +193,12 @@ static void online_task(void *arg)
     lib_unlock();
     s_available = vercmp(ver, FW_VERSION) > 0;
     if (!s_available) {
-        set_status(OTA_IDLE, 0, "Up to date (v" FW_VERSION ")");
+        { char m[48]; snprintf(m, sizeof(m), T("Up to date (v%s)"), FW_VERSION); set_status(OTA_IDLE, 0, m); }
         goto out;
     }
     if (!install) {
         char m[64];
-        snprintf(m, sizeof(m), "Update available: v%s", ver);
+        snprintf(m, sizeof(m), T("Update available: v%s"), ver);
         set_status(OTA_IDLE, 0, m);
         goto out;
     }
@@ -238,7 +239,7 @@ static void online_task(void *arg)
         ota_reboot_soon();
     } else {
         char m[64];
-        snprintf(m, sizeof(m), "Update failed: %s", esp_err_to_name(err));
+        snprintf(m, sizeof(m), T("Update failed: %s"), esp_err_to_name(err));
         set_status(OTA_FAILED, 0, m);
     }
 out:
@@ -284,17 +285,17 @@ static bool check_app(const uint8_t *p, size_t len)
 {
     if (len < sizeof(esp_image_header_t) + sizeof(esp_image_segment_header_t) + sizeof(esp_app_desc_t) ||
         p[0] != ESP_IMAGE_HEADER_MAGIC) {
-        snprintf(s_up_error, sizeof(s_up_error), "Not an ESP32 firmware file");
+        snprintf(s_up_error, sizeof(s_up_error), "%s", T("Not an ESP32 firmware file"));
         return false;
     }
     const esp_app_desc_t *d = (const esp_app_desc_t *)(p + sizeof(esp_image_header_t) + sizeof(esp_image_segment_header_t));
     if (d->magic_word != ESP_APP_DESC_MAGIC_WORD) {
-        snprintf(s_up_error, sizeof(s_up_error), "Not an app image (wrong file?)");
+        snprintf(s_up_error, sizeof(s_up_error), "%s", T("Not an app image (wrong file?)"));
         return false;
     }
     const esp_app_desc_t *me = esp_app_get_description();
     if (strncmp(d->project_name, me->project_name, sizeof(d->project_name))) {
-        snprintf(s_up_error, sizeof(s_up_error), "That's firmware for '%.24s', not Retro Pocket", d->project_name);
+        snprintf(s_up_error, sizeof(s_up_error), T("That's firmware for '%.24s', not Retro Pocket"), d->project_name);
         return false;
     }
     snprintf(s_up_version, sizeof(s_up_version), "%.31s", d->version);
@@ -312,26 +313,26 @@ static bool start_writing(void)
 
     s_up_part = esp_ota_get_next_update_partition(NULL);
     if (!s_up_part || esp_ota_begin(s_up_part, OTA_SIZE_UNKNOWN, &s_up_handle) != ESP_OK) {
-        snprintf(s_up_error, sizeof(s_up_error), "No room for the update");
+        snprintf(s_up_error, sizeof(s_up_error), "%s", T("No room for the update"));
         return false;
     }
     s_up_started = true;
     if (esp_ota_write(s_up_handle, s_head + skip, s_head_len - skip) != ESP_OK) {
-        snprintf(s_up_error, sizeof(s_up_error), "Flash write failed");
+        snprintf(s_up_error, sizeof(s_up_error), "%s", T("Flash write failed"));
         return false;
     }
     char m[64];
-    snprintf(m, sizeof(m), "Installing v%s...", s_up_version);
+    snprintf(m, sizeof(m), T("Installing v%s..."), s_up_version);
     set_status(OTA_DOWNLOADING, (int)(s_written * 100 / s_total), m);
     return true;
 }
 
 bool ota_upload_begin(size_t size)
 {
-    if (s_busy) { snprintf(s_up_error, sizeof(s_up_error), "An update is already running"); return false; }
+    if (s_busy) { snprintf(s_up_error, sizeof(s_up_error), "%s", T("An update is already running")); return false; }
     free(s_head);
     s_head = heap_caps_malloc(HEAD_LEN, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-    if (!s_head) { snprintf(s_up_error, sizeof(s_up_error), "Out of memory"); return false; }
+    if (!s_head) { snprintf(s_up_error, sizeof(s_up_error), "%s", T("Out of memory")); return false; }
     s_head_len = s_written = 0;
     s_total = size;
     s_up_started = false;
@@ -355,7 +356,7 @@ bool ota_upload_write(const void *data, size_t len)
         if (!start_writing()) return false;
     }
     if (len && esp_ota_write(s_up_handle, p, len) != ESP_OK) {
-        snprintf(s_up_error, sizeof(s_up_error), "Flash write failed");
+        snprintf(s_up_error, sizeof(s_up_error), "%s", T("Flash write failed"));
         return false;
     }
     if (s_total) set_status(OTA_DOWNLOADING, (int)(s_written * 100 / s_total), NULL);
@@ -372,8 +373,8 @@ bool ota_upload_end(void)
         if (err == ESP_OK) err = esp_ota_set_boot_partition(s_up_part);
         if (err != ESP_OK) {
             ok = false;
-            snprintf(s_up_error, sizeof(s_up_error), err == ESP_ERR_OTA_VALIDATE_FAILED
-                     ? "Firmware file is damaged (incomplete upload?)" : "Install failed: %s", esp_err_to_name(err));
+            snprintf(s_up_error, sizeof(s_up_error), T(err == ESP_ERR_OTA_VALIDATE_FAILED
+                     ? "Firmware file is damaged (incomplete upload?)" : "Install failed: %s"), esp_err_to_name(err));
         }
     }
     if (!ok && s_up_started) { esp_ota_abort(s_up_handle); s_up_started = false; }
@@ -381,7 +382,7 @@ bool ota_upload_end(void)
     s_head = NULL;
     s_busy = false;
     char m[64];
-    snprintf(m, sizeof(m), "Installed v%s! Restarting...", s_up_version);
+    snprintf(m, sizeof(m), T("Installed v%s! Restarting..."), s_up_version);
     set_status(ok ? OTA_DONE : OTA_FAILED, ok ? 100 : 0, ok ? m : s_up_error);
     if (ok) ota_reboot_soon();
     return ok;
@@ -410,7 +411,7 @@ static void check_rollback(void)
     if (!bad) return;
     esp_app_desc_t d;
     if (esp_ota_get_partition_description(bad, &d) != ESP_OK) return;
-    snprintf(s_rollback, sizeof(s_rollback), "Update to v%.20s didn't start, kept v" FW_VERSION, d.version);
+    snprintf(s_rollback, sizeof(s_rollback), T("Update to v%.20s didn't start, kept v%s"), d.version, FW_VERSION);
     nvs_handle_t h;
     char seen[33] = "";
     size_t n = sizeof(seen);

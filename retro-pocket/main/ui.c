@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "ui.h"
+#include "i18n.h"
 #include "gfx.h"
 #include "icons.h"
 #include "input.h"
@@ -58,7 +59,7 @@ static float s_toast_t = -1;   /* seconds shown, <0 = none */
 
 void ui_toast(const char *msg)
 {
-    snprintf(s_toast, sizeof(s_toast), "%s", msg);
+    snprintf(s_toast, sizeof(s_toast), "%s", T(msg));
     s_toast_t = 0;
 }
 
@@ -242,7 +243,7 @@ bool ui_keyboard(const char *title, char *buf, size_t n)
                 gfx_text(fb, x + (kw - 6) / 2, y + 3, s, sel ? C_ACCENT : C_TEXT, 0);
             }
         int ux = 0;
-        const char *labels[4] = { layout == 2 ? kb_special[0] : kb_special[2], kb_special[3], kb_special[4], kb_special[5] };
+        const char *labels[4] = { layout == 2 ? kb_special[0] : kb_special[2], T(kb_special[3]), T(kb_special[4]), kb_special[5] };
         for (int i = 0; i < 4; i++) {
             int x = 2 + ux * kw, y = ky + 4 * (kh + 1), w = sp_w[i] * kw;
             bool sel = row == 4 && col == i;

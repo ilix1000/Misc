@@ -6,7 +6,7 @@ const PORT = +process.argv[2] || 8080;
 const ROOT = path.join(__dirname, '..', '..');
 const log = [];                       // requests seen, for tests: GET /__log
 let keys = 0;
-let settings = { brightness: 80, rotation: 0, stick_rot: 0, swap_rb: 0, gb_palette: 0, nes_scale: 0, show_fps: 0, ui_anim: 1,
+let settings = { brightness: 80, rotation: 0, stick_rot: 0, swap_rb: 0, gb_palette: 0, nes_scale: 0, show_fps: 0, ui_anim: 1, lang: 1,
   ota_repo: 'ilix1000/Misc', ota_branch: 'main', ota_path: 'retro-pocket/firmware/ota', ota_has_token: false };
 const games = [
   { name: 'Alpha Quest (USA)', path: '/roms/Alpha Quest (USA).zip', sys: 1, fav: true },

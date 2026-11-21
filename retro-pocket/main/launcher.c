@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "launcher.h"
+#include "i18n.h"
 #include "bridge.h"
 #include "emulators.h"
 #include "icons.h"
@@ -168,7 +169,7 @@ static const game_t *game_list_get(card_t c, int i)
 
 /* ---------------- settings ---------------- */
 
-enum { SET_BRIGHT, SET_SCREEN, SET_STICK, SET_SWAP, SET_PAL, SET_NES, SET_FPS, SET_ANIM,
+enum { SET_LANG, SET_BRIGHT, SET_SCREEN, SET_STICK, SET_SWAP, SET_PAL, SET_NES, SET_FPS, SET_ANIM,
        SET_RESCAN, SET_UPDATE, SET_ABOUT, SET_COUNT };
 static const char *const rot_names[ROT_COUNT] = { "Landscape", "Portrait", "Land 180", "Port 180" };
 
@@ -176,27 +177,28 @@ static void setting_text(int i, char *name, char *val, size_t n)
 {
     val[0] = 0;
     switch (i) {
-        case SET_BRIGHT: strcpy(name, "Brightness"); snprintf(val, n, "%d%%", g_settings.brightness); break;
-        case SET_SCREEN: strcpy(name, "Screen"); strcpy(val, rot_names[g_settings.rotation & 3]); break;
-        case SET_STICK:  strcpy(name, "Stick"); snprintf(val, n, "%d deg", g_settings.stick_rot * 90); break;
-        case SET_SWAP:   strcpy(name, "Swap red/blue"); strcpy(val, g_settings.swap_rb ? "On" : "Off"); break;
-        case SET_PAL:    strcpy(name, "GB colors"); strcpy(val, gb_palette_names[g_settings.gb_palette]); break;
-        case SET_NES:    strcpy(name, "NES view"); strcpy(val, g_settings.nes_scale ? "Trim" : "Full"); break;
-        case SET_FPS:    strcpy(name, "Show FPS"); strcpy(val, g_settings.show_fps ? "On" : "Off"); break;
-        case SET_ANIM:   strcpy(name, "Animations"); strcpy(val, g_settings.ui_anim ? "On" : "Off"); break;
-        case SET_RESCAN: strcpy(name, "Rescan SD card"); break;
+        case SET_LANG:   strcpy(name, T("Language")); strcpy(val, lang_name(g_settings.lang)); break;
+        case SET_BRIGHT: strcpy(name, T("Brightness")); snprintf(val, n, "%d%%", g_settings.brightness); break;
+        case SET_SCREEN: strcpy(name, T("Screen")); strcpy(val, T(rot_names[g_settings.rotation & 3])); break;
+        case SET_STICK:  strcpy(name, T("Stick")); snprintf(val, n, T("%d deg"), g_settings.stick_rot * 90); break;
+        case SET_SWAP:   strcpy(name, T("Swap red/blue")); strcpy(val, T(g_settings.swap_rb ? "On" : "Off")); break;
+        case SET_PAL:    strcpy(name, T("GB colors")); strcpy(val, T(gb_palette_names[g_settings.gb_palette])); break;
+        case SET_NES:    strcpy(name, T("NES view")); strcpy(val, T(g_settings.nes_scale ? "Trim" : "Full")); break;
+        case SET_FPS:    strcpy(name, T("Show FPS")); strcpy(val, T(g_settings.show_fps ? "On" : "Off")); break;
+        case SET_ANIM:   strcpy(name, T("Animations")); strcpy(val, T(g_settings.ui_anim ? "On" : "Off")); break;
+        case SET_RESCAN: strcpy(name, T("Rescan SD card")); break;
         case SET_UPDATE: {
-            strcpy(name, "Update");
+            strcpy(name, T("Update"));
             ota_status_t st;
             ota_status(&st);
-            if (st.phase == OTA_CHECKING) strcpy(val, "Checking");
-            else if (ota_update_available() == 1) snprintf(val, n, "Get v%s", st.latest);
-            else if (ota_update_available() == 0) strcpy(val, "Up to date");
-            else if (st.phase == OTA_FAILED) strcpy(val, "Failed");
-            else strcpy(val, "Check");
+            if (st.phase == OTA_CHECKING) strcpy(val, T("Checking"));
+            else if (ota_update_available() == 1) snprintf(val, n, T("Get v%s"), st.latest);
+            else if (ota_update_available() == 0) strcpy(val, T("Up to date"));
+            else if (st.phase == OTA_FAILED) strcpy(val, T("Failed"));
+            else strcpy(val, T("Check"));
             break;
         }
-        case SET_ABOUT:  strcpy(name, "Version"); strcpy(val, FW_VERSION); break;
+        case SET_ABOUT:  strcpy(name, T("Version")); strcpy(val, FW_VERSION); break;
     }
 }
 
@@ -211,6 +213,7 @@ static void rescan(void);
 static void setting_change(int i, int dir)
 {
     switch (i) {
+        case SET_LANG:   g_settings.lang = (g_settings.lang + dir + LANG_COUNT) % LANG_COUNT; break;
         case SET_BRIGHT:
             g_settings.brightness += dir * 10;
             if (g_settings.brightness > 100) g_settings.brightness = dir > 0 ? 10 : 100;
@@ -225,7 +228,7 @@ static void setting_change(int i, int dir)
         case SET_ANIM:   g_settings.ui_anim ^= 1; break;
         case SET_RESCAN: rescan(); return;
         case SET_UPDATE:
-            if (wifi_state() != WIFI_CONNECTED) { ui_toast("Connect to Wi-Fi first"); return; }
+            if (wifi_state() != WIFI_CONNECTED) { ui_toast(T("Connect to Wi-Fi first")); return; }
             ota_online_start(ota_update_available() == 1);
             return;
         default: return;
@@ -242,11 +245,11 @@ static void wifi_text(int i, char *name, char *val, size_t n)
 {
     val[0] = 0;
     switch (i) {
-        case WM_SCAN:    strcpy(name, "Find networks"); break;
-        case WM_HOTSPOT: strcpy(name, "Hotspot"); strcpy(val, wifi_hotspot_on() ? "On" : "Off"); break;
-        case WM_QR:      strcpy(name, "Show QR code"); break;
-        case WM_POWER:   strcpy(name, "Wi-Fi"); strcpy(val, wifi_enabled() ? "On" : "Off"); break;
-        case WM_FORGET:  strcpy(name, "Forget network"); break;
+        case WM_SCAN:    strcpy(name, T("Find networks")); break;
+        case WM_HOTSPOT: strcpy(name, T("Hotspot")); strcpy(val, T(wifi_hotspot_on() ? "On" : "Off")); break;
+        case WM_QR:      strcpy(name, T("Show QR code")); break;
+        case WM_POWER:   strcpy(name, "Wi-Fi"); strcpy(val, T(wifi_enabled() ? "On" : "Off")); break;
+        case WM_FORGET:  strcpy(name, T("Forget network")); break;
     }
 }
 
@@ -259,7 +262,7 @@ static void draw_header(uint16_t *fb, const uint16_t *icon, const char *title, c
 {
     gfx_vgradient(fb, 0, 0, W, HEAD_H, color, ((color >> 1) & 0x7f7f7f));
     gfx_icon(fb, 2, 1, icon, 16, 1);
-    gfx_text(fb, 21, 6, title, C_TEXT, (W - 50) / CHAR_W);
+    gfx_text(fb, 21, 6, T(title), C_TEXT, (W - 50) / CHAR_W);
     if (right) gfx_text(fb, W - 3 - gfx_text_width(right, 1), 6, right, RGB(230, 230, 240), 0);
     gfx_rect(fb, 0, HEAD_H, W, 1, RGB(0, 0, 0));
 }
@@ -267,7 +270,7 @@ static void draw_header(uint16_t *fb, const uint16_t *icon, const char *title, c
 static void draw_footer(uint16_t *fb, const char *hint)
 {
     gfx_rect(fb, 0, H - FOOT_H, W, FOOT_H, RGB(22, 24, 40));
-    gfx_text(fb, 3, H - 8, hint, C_DIM, (W - 6) / CHAR_W);
+    gfx_text(fb, 3, H - 8, T(hint), C_DIM, (W - 6) / CHAR_W);
 }
 
 typedef void (*row_fn)(int i, char *label, char *value, size_t n, const uint16_t **icon);
@@ -340,17 +343,17 @@ static void card_subtitle(card_t c, char *out, size_t n)
 {
     int k;
     switch (c) {
-        case CARD_RECENT: k = lib_recent_count(); snprintf(out, n, k ? "%d played" : "Nothing yet", k); break;
-        case CARD_FAVS:   k = lib_fav_count(); snprintf(out, n, k ? "%d games" : "START to add", k); break;
+        case CARD_RECENT: k = lib_recent_count(); snprintf(out, n, k ? T("%d played") : T("Nothing yet"), k); break;
+        case CARD_FAVS:   k = lib_fav_count(); snprintf(out, n, k ? Tn(k, "%d game", "%d games") : T("START to add"), k); break;
         case CARD_NES: case CARD_GB: case CARD_SMS: case CARD_GG: case CARD_PCE: case CARD_DOOM:
-            k = games_count(card_sys(c)); snprintf(out, n, "%d game%s", k, k == 1 ? "" : "s"); break;
-        case CARD_BUILTIN: snprintf(out, n, "%d game", BUILTIN_COUNT); break;
+            k = games_count(card_sys(c)); snprintf(out, n, Tn(k, "%d game", "%d games"), k); break;
+        case CARD_BUILTIN: snprintf(out, n, Tn(BUILTIN_COUNT, "%d game", "%d games"), BUILTIN_COUNT); break;
         case CARD_WIFI:
             switch (wifi_state()) {
                 case WIFI_CONNECTED: { char ip[16]; wifi_ip(ip, sizeof(ip)); snprintf(out, n, "%s", ip); break; }
-                case WIFI_CONNECTING: snprintf(out, n, "Connecting..."); break;
-                case WIFI_HOTSPOT: snprintf(out, n, "Hotspot on"); break;
-                default: snprintf(out, n, "Off"); break;
+                case WIFI_CONNECTING: snprintf(out, n, "%s", T("Connecting...")); break;
+                case WIFI_HOTSPOT: snprintf(out, n, "%s", T("Hotspot on")); break;
+                default: snprintf(out, n, "%s", T("Off")); break;
             }
             break;
         default: snprintf(out, n, "v" FW_VERSION); break;
@@ -406,9 +409,10 @@ static void draw_home(uint16_t *fb, float dt)
     char sub[40];
     card_subtitle(near, sub, sizeof(sub));
     int ty = cy + 34;
-    int tw = gfx_text_width(cards[near].title, 2);
+    const char *title = T(cards[near].title);
+    int tw = gfx_text_width(title, 2);
     int scale = tw > W - 8 ? 1 : 2;
-    gfx_text_center_scaled(fb, W / 2 + (int)off, ty, cards[near].title,
+    gfx_text_center_scaled(fb, W / 2 + (int)off, ty, title,
                            gfx_lerp_color(0x202230, 0xf0f0f6, fade), scale);
     gfx_text_center_scaled(fb, W / 2 + (int)off, ty + 18, sub, gfx_lerp_color(0x202230, 0x9aa0c0, fade), 1);
 
@@ -447,13 +451,13 @@ static void draw_game_list(uint16_t *fb, float dt)
         const char *l3 = "to the SD card or web UI";
         if (c == CARD_RECENT) { l1 = "Nothing played yet"; l2 = "Games you play"; l3 = "show up here"; }
         if (c == CARD_FAVS)   { l1 = "No favorites yet"; l2 = "Press START on a game"; l3 = "to add it here"; }
-        gfx_text_center(fb, H / 2 + 8, l1, C_TEXT);
-        gfx_text_center(fb, H / 2 + 20, l2, C_DIM);
-        gfx_text_center(fb, H / 2 + 30, l3, C_DIM);
+        gfx_text_center(fb, H / 2 + 8, T(l1), C_TEXT);
+        gfx_text_center(fb, H / 2 + 20, T(l2), C_DIM);
+        gfx_text_center(fb, H / 2 + 30, T(l3), C_DIM);
     } else {
         draw_list(fb, &S.list, n, game_row, HEAD_H + 2, H - FOOT_H - 1, dt, col);
         if (c == CARD_BUILTIN)
-            gfx_text_wrap(fb, 4, H - FOOT_H - 22, W - 8, builtins[S.list.sel].desc, C_DIM);
+            gfx_text_wrap(fb, 4, H - FOOT_H - 22, W - 8, T(builtins[S.list.sel].desc), C_DIM);
     }
     draw_header(fb, cards[c].icon, cards[c].title, cnt, col);
     draw_footer(fb, c == CARD_BUILTIN ? "A Play  B Back" : W < 150 ? "A Play  START Fav" : "A Play B Back START Fav");
@@ -493,18 +497,18 @@ static void draw_wifi(uint16_t *fb, float dt)
     switch (wifi_state()) {
         case WIFI_CONNECTED:
             snprintf(l1, sizeof(l1), "%s", ssid);
-            snprintf(l2, sizeof(l2), "Web UI:");
+            snprintf(l2, sizeof(l2), "%s", T("Web UI:"));
             snprintf(l3, sizeof(l3), "http://%s", ip);
             c1 = C_GREEN;
             break;
-        case WIFI_CONNECTING: snprintf(l1, sizeof(l1), "Joining %s", ssid); break;
+        case WIFI_CONNECTING: snprintf(l1, sizeof(l1), T("Joining %s"), ssid); break;
         case WIFI_HOTSPOT:
             snprintf(l1, sizeof(l1), "%s", wifi_ap_ssid());
-            snprintf(l2, sizeof(l2), "Password: %s", wifi_ap_pass());
-            snprintf(l3, sizeof(l3), "Open " WIFI_AP_IP);
+            snprintf(l2, sizeof(l2), T("Password: %s"), wifi_ap_pass());
+            snprintf(l3, sizeof(l3), T("Open %s"), WIFI_AP_IP);
             c1 = C_ACCENT;
             break;
-        default: snprintf(l1, sizeof(l1), "Wi-Fi is off"); break;
+        default: snprintf(l1, sizeof(l1), "%s", T("Wi-Fi is off")); break;
     }
     if (wifi_state() == WIFI_CONNECTING) ui_draw_spinner(fb, W - 14, py + 19, S.t, C_ACCENT);
     gfx_text(fb, 7, py + 4, l1, c1, (W - 28) / CHAR_W);
@@ -530,10 +534,10 @@ static void draw_nets(uint16_t *fb, float dt)
     gfx_vgradient(fb, 0, 0, W, H, 0x141729, 0x090a12);
     if (S.nets.sel_since == 0) {   /* results not in yet */
         ui_draw_spinner(fb, W / 2, H / 2 - 6, S.t, C_ACCENT);
-        gfx_text_center(fb, H / 2 + 10, "Looking for networks", C_DIM);
+        gfx_text_center(fb, H / 2 + 10, T("Looking for networks"), C_DIM);
     } else if (s_net_count == 0) {
-        gfx_text_center(fb, H / 2 - 8, "No networks found", C_TEXT);
-        gfx_text_center(fb, H / 2 + 4, "START to scan again", C_DIM);
+        gfx_text_center(fb, H / 2 - 8, T("No networks found"), C_TEXT);
+        gfx_text_center(fb, H / 2 + 4, T("START to scan again"), C_DIM);
     } else {
         draw_list(fb, &S.nets, s_net_count, net_row, HEAD_H + 2, H - FOOT_H - 1, dt, cards[CARD_WIFI].color);
     }
@@ -552,14 +556,14 @@ static void draw_qr(uint16_t *fb, float dt)
     if (page == 1 && !can_url) page = 0;
     if (page == 0 && can_ap) {
         snprintf(text, sizeof(text), "WIFI:T:WPA;S:%s;P:%s;;", wifi_ap_ssid(), wifi_ap_pass());
-        snprintf(l1, sizeof(l1), "1. Scan to join hotspot");
-        snprintf(l2, sizeof(l2), "2. Open " WIFI_AP_IP);
+        snprintf(l1, sizeof(l1), "%s", T("1. Scan to join hotspot"));
+        snprintf(l2, sizeof(l2), T("2. Open %s"), WIFI_AP_IP);
     } else if (can_url) {
         snprintf(text, sizeof(text), "http://%s", ip);
-        snprintf(l1, sizeof(l1), "Scan to open web UI");
+        snprintf(l1, sizeof(l1), "%s", T("Scan to open web UI"));
         snprintf(l2, sizeof(l2), "http://%s", ip);
     } else {
-        gfx_text_center(fb, H / 2 - 4, "Turn on Wi-Fi first", C_DIM);
+        gfx_text_center(fb, H / 2 - 4, T("Turn on Wi-Fi first"), C_DIM);
         draw_header(fb, icon_wifi, "QR code", NULL, cards[CARD_WIFI].color);
         return;
     }
@@ -594,10 +598,10 @@ static void scan_progress(int files, int games, const char *current)
     gfx_vgradient(fb, 0, 0, W, H, 0x1c2040, 0x090a14);
     int cy = H / 2;
     ui_draw_spinner(fb, W / 2, cy - 22, t, C_ACCENT);
-    gfx_text_center(fb, cy - 4, "Looking for games", C_TEXT);
-    snprintf(buf, sizeof(buf), "%d found", games);
+    gfx_text_center(fb, cy - 4, T("Looking for games"), C_TEXT);
+    snprintf(buf, sizeof(buf), T("%d found"), games);
     gfx_text_center(fb, cy + 10, buf, C_ACCENT);
-    snprintf(buf, sizeof(buf), "%d files checked", files);
+    snprintf(buf, sizeof(buf), T("%d files checked"), files);
     gfx_text_center(fb, cy + 20, buf, C_DIM);
     gfx_text(fb, 4, H - 12, current, RGB(80, 84, 110), (W - 8) / CHAR_W);
     display_present();
@@ -617,7 +621,7 @@ static void loading_screen(const char *name, const uint16_t *icon)
     gfx_set_origin(0, 0);
     gfx_vgradient(fb, 0, 0, W, H, 0x1c2040, 0x090a14);
     gfx_icon(fb, W / 2 - 24, H / 2 - 40, icon, 16, 3);
-    gfx_text_center(fb, H / 2 + 14, "Loading...", C_ACCENT);
+    gfx_text_center(fb, H / 2 + 14, T("Loading..."), C_ACCENT);
     int len = strlen(name), max = (W - 8) / CHAR_W;
     gfx_text(fb, len > max ? 4 : (W - gfx_text_width(name, 1)) / 2, H / 2 + 26, name, C_DIM, max);
     display_present();
@@ -767,11 +771,11 @@ static void handle_input(void)
             if ((p & BTN_A) && s_net_count) {
                 wifi_ap_t *ap = &s_nets[S.nets.sel];
                 char pass[65] = "", title[48];
-                snprintf(title, sizeof(title), "Password: %s", ap->ssid);
+                snprintf(title, sizeof(title), T("Password: %s"), ap->ssid);
                 if (!ap->secure || ui_keyboard(title, pass, sizeof(pass))) {
                     wifi_connect(ap->ssid, pass);
                     char m[64];
-                    snprintf(m, sizeof(m), "Joining %s...", ap->ssid);
+                    snprintf(m, sizeof(m), T("Joining %s..."), ap->ssid);
                     ui_toast(m);
                     pop();
                 }
@@ -812,12 +816,12 @@ static bool draw_ota_overlay(uint16_t *fb)
     gfx_set_origin(0, 0);
     gfx_vgradient(fb, 0, 0, W, H, 0x1c2040, 0x090a14);
     gfx_icon(fb, W / 2 - 16, H / 2 - 44, icon_gear, 16, 2);
-    gfx_text_center(fb, H / 2 - 6, st.phase == OTA_DONE ? "Update installed!" : "Updating firmware", C_TEXT);
+    gfx_text_center(fb, H / 2 - 6, T(st.phase == OTA_DONE ? "Update installed!" : "Updating firmware"), C_TEXT);
     int bw = W - 30;
     gfx_round_rect(fb, 15, H / 2 + 8, bw, 8, RGB(30, 33, 56));
     gfx_round_rect(fb, 15, H / 2 + 8, bw * st.percent / 100 > 4 ? bw * st.percent / 100 : 4, 8, C_ACCENT);
     char pct[32];
-    snprintf(pct, sizeof(pct), st.phase == OTA_DONE ? "Restarting..." : "%d%%  don't turn off", st.percent);
+    snprintf(pct, sizeof(pct), T(st.phase == OTA_DONE ? "Restarting..." : "%d%%  don't turn off"), st.percent);
     gfx_text_center(fb, H / 2 + 22, pct, C_DIM);
     return true;
 }

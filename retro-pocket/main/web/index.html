@@ -149,13 +149,14 @@ a{color:var(--accent)}
   </div>
   <h2>Hotspot</h2>
   <div class="card row"><div class="grow">Device hotspot<div class="muted" id="apinfo"></div></div><input type="checkbox" id="apchk" onchange="post('/api/wifi/hotspot?on='+(this.checked?1:0))"></div>
-  <div class="card row"><div class="grow">Forget saved network<div class="muted">The device opens its hotspot again for setup.</div></div><button class="warn small" onclick="if(confirm('Forget the saved Wi-Fi network?'))post('/api/wifi/forget').then(()=>toast('Forgotten'))">Forget</button></div>
+  <div class="card row"><div class="grow">Forget saved network<div class="muted">The device opens its hotspot again for setup.</div></div><button class="warn small" onclick="if(confirm(L('Forget the saved Wi-Fi network?')))post('/api/wifi/forget').then(()=>toast('Forgotten'))">Forget</button></div>
 </section>
 
 <!-- SETTINGS -->
 <section id="t-settings">
   <h2>Display & controls</h2>
   <div class="card">
+    <label class="f">Language / Jezik</label><select data-s="lang"><option value="0">English</option><option value="1">Srpski</option></select>
     <label class="f">Brightness <span id="bval"></span></label><input type="range" min="10" max="100" step="10" data-s="brightness">
     <label class="f">Screen orientation</label><select data-s="rotation"><option value="0">Landscape</option><option value="1">Portrait</option><option value="2">Landscape (flipped)</option><option value="3">Portrait (flipped)</option></select>
     <label class="f">Joystick rotation</label><select data-s="stick_rot"><option value="0">0°</option><option value="1">90°</option><option value="2">180°</option><option value="3">270°</option></select>
@@ -187,12 +188,57 @@ a{color:var(--accent)}
       <button style="margin-top:10px" onclick="saveSrc()">Save</button>
     </details>
   </div>
-  <div class="card row"><div class="grow">Restart device</div><button class="warn small" onclick="if(confirm('Restart now?'))post('/api/reboot').then(()=>toast('Restarting…'))">Restart</button></div>
+  <div class="card row"><div class="grow">Restart device</div><button class="warn small" onclick="if(confirm(L('Restart now?')))post('/api/reboot').then(()=>toast('Restarting…'))">Restart</button></div>
 </section>
 </main>
 
 <nav id="nav"></nav>
 
+<script>
+/* Serbian (Latin) translation. Static text and anything later written as a
+   whole text node is translated automatically; strings built from parts use
+   L('text {0}', value). */
+const SR={
+'Play':'Igraj','Games':'Igre','Files':'Fajlovi','Settings':'Podešavanja','System':'Sistem',
+'connecting…':'povezivanje…','offline':'van mreže','off':'isključen','connecting':'povezivanje','connected':'povezan','hotspot':'hotspot',
+'Now playing':'Trenutno igraš','Menu':'Meni','Exit game':'Izađi iz igre','Back to menu':'Nazad u meni',
+'Keyboard:':'Tastatura:','move ·':'kretanje ·','Menu. USB/Bluetooth gamepads work too.':'Meni. Rade i USB/Bluetooth džojpedi.',
+'Search games…':'Pretraži igre…','Rescanning SD card…':'Ponovo skeniram SD karticu…','Loading…':'Učitavanje…','Add games':'Dodaj igre',
+'Drop':'Prevuci','files here or':'fajlove ovde ili','choose files':'izaberi fajlove','They go to /roms and show up right away.':'Idu u /roms i odmah se pojavljuju.',
+'All':'Sve','★ Favorites':'★ Omiljene','Recent':'Skorašnje',"Couldn't load games":'Ne mogu da učitam igre','Nothing matches.':'Ništa ne odgovara.','No games yet: add some below.':'Još nema igara: dodaj ih ispod.',
+'Starting {0}':'Pokrećem {0}','+ Folder':'+ Folder','⇪ Upload':'⇪ Otpremi','Empty folder':'Prazan folder','Deleted':'Obrisano','Delete {0}?':'Obrisati {0}?',
+'New name':'Novo ime','Folder name':'Ime foldera','Upload finished':'Otpremanje završeno','failed':'neuspešno',
+'Networks':'Mreže','Scan for networks':'Traži mreže','Scanning…':'Tražim…','Scan again':'Traži ponovo','Scan failed':'Pretraga nije uspela','No networks found':'Nema pronađenih mreža',
+'Or type a network name':'Ili upiši ime mreže','Network name (SSID)':'Ime mreže (SSID)','Join':'Poveži se','Password':'Lozinka','password':'lozinka','Connect':'Poveži','Cancel':'Otkaži',
+'Hotspot':'Hotspot','Device hotspot':'Hotspot uređaja','Forget saved network':'Zaboravi sačuvanu mrežu','The device opens its hotspot again for setup.':'Uređaj ponovo otvara hotspot za podešavanje.',
+'Forget':'Zaboravi','Forget the saved Wi-Fi network?':'Zaboraviti sačuvanu Wi-Fi mrežu?','Forgotten':'Zaboravljeno',
+'Status':'Status','Connected to {0}':'Povezan na {0}','Connecting to {0}…':'Povezujem se na {0}…','Hotspot only':'Samo hotspot','Off':'Isključen',
+'Connecting to {0}… the device shows its new IP':'Povezujem se na {0}… uređaj će prikazati novu IP adresu',
+'Display & controls':'Ekran i kontrole','Brightness':'Osvetljenje','Screen orientation':'Orijentacija ekrana','Landscape':'Položeno','Portrait':'Uspravno',
+'Landscape (flipped)':'Položeno (obrnuto)','Portrait (flipped)':'Uspravno (obrnuto)','Joystick rotation':'Rotacija džojstika','Game Boy colors':'Game Boy boje',
+'Green':'Zelena','Grey':'Siva','Warm':'Topla','Color':'U boji','NES picture':'NES slika','Full':'Cela','Trim edges':'Iseci ivice',
+'Swap red / blue':'Zameni crvenu / plavu','Show FPS':'Prikaži FPS','Menu animations':'Animacije menija','Saved':'Sačuvano',
+'Device':'Uređaj','Firmware':'Firmver','IP address':'IP adresa','Uptime':'Vreme rada','Free RAM':'Slobodan RAM','Free PSRAM':'Slobodan PSRAM','none':'nema','SD card':'SD kartica','no card':'nema kartice','{0} used of {1}':'{0} zauzeto od {1}',
+'Firmware update':'Ažuriranje firmvera','Installed':'Instalirano','Check GitHub for a newer version.':'Proveri GitHub za noviju verziju.','Check':'Proveri','Install':'Instaliraj',
+'Or upload a firmware file (':'Ili otpremi fajl firmvera (','or':'ili',', both work)':', oba rade)','Upload':'Otpremi','Update source':'Izvor ažuriranja',
+'GitHub repo (owner/name)':'GitHub repo (vlasnik/ime)','Branch':'Grana','Folder':'Folder','Token (only for private repos; read-only "Contents" permission)':'Token (samo za privatne repoe; dozvola "Contents" samo za čitanje)',
+'Save':'Sačuvaj','Update source saved':'Izvor ažuriranja sačuvan','Restart device':'Restartuj uređaj','Restart':'Restartuj','Restart now?':'Restartovati sada?','Restarting…':'Restartujem…',
+'Installing… watch the device screen':'Instaliram… gledaj ekran uređaja','Checking…':'Proveravam…','Pick the .bin file first':'Prvo izaberi .bin fajl','Upload failed':'Otpremanje nije uspelo',
+'Installed v{0}! The device is restarting…':'Instaliran v{0}! Uređaj se restartuje…','Installed v{0}, restarting':'Instaliran v{0}, restartujem',
+'upload interrupted':'otpremanje prekinuto','bad json':'neispravan JSON'};
+let LANG=0;const ORIG=new WeakMap();
+function L(k,...a){let s=LANG==1&&SR[k]||k;a.forEach((v,i)=>s=s.split('{'+i+'}').join(v));return s}
+function trNode(n){if(n.nodeType==3){if(!n.data.trim())return;let o=ORIG.get(n);
+  if(o===undefined||(n.data!==o.en&&n.data!==o.tr)){o={en:n.data};ORIG.set(n,o)}
+  const m=o.en.match(/^(\s*)([\s\S]*?)(\s*)$/),t=LANG==1&&SR[m[2]];o.tr=t?m[1]+t+m[3]:o.en;if(n.data!==o.tr)n.data=o.tr;return}
+ if(n.nodeType!=1||n.tagName=='SCRIPT'||n.tagName=='STYLE')return;
+ if(n.placeholder){if(!n.dataset.ph)n.dataset.ph=n.placeholder;n.placeholder=L(n.dataset.ph)}
+ n.childNodes.forEach(trNode)}
+function setLang(l){LANG=l;document.documentElement.lang=l==1?'sr':'en';trNode(document.body)}
+new MutationObserver(ms=>ms.forEach(m=>{if(LANG!=1&&m.type!='childList')return;
+  if(m.type=='characterData')trNode(m.target);else m.addedNodes.forEach(trNode)}))
+ .observe(document.body,{childList:true,subtree:true,characterData:true});
+</script>
 <script>
 const $=id=>document.getElementById(id);
 const TABS=[['play','Play','M6 12h4m-2-2v4m7-1h.01M18 11h.01M7 6h10a5 5 0 0 1 5 5v2a5 5 0 0 1-9 3h-2a5 5 0 0 1-9-3v-2a5 5 0 0 1 5-5z'],
@@ -216,7 +262,7 @@ const size=b=>b>1e9?(b/1e9).toFixed(1)+' GB':b>1e6?(b/1e6).toFixed(1)+' MB':b>1e
 /* ---------- status ---------- */
 let info={};
 async function loadInfo(){try{info=await api('/api/info')}catch(e){$('stxt').textContent='offline';$('sdot').className='dot';return}
- $('sdot').className='dot on';$('stxt').textContent=info.wifi=='connected'?info.ssid+' '+(info.rssi||'')+'dBm':info.wifi=='hotspot'?'Hotspot':info.wifi;
+ $('sdot').className='dot on';$('stxt').textContent=info.wifi=='connected'?info.ssid+' '+(info.rssi||'')+'dBm':info.wifi=='hotspot'?'Hotspot':L(info.wifi);
  $('now').textContent=info.playing||'Menu';$('exitbtn').style.display=info.playing?'':'none';
  if(tab=='wifi')renderWifi();if(tab=='system')renderSystem();}
 setInterval(loadInfo,3000);
@@ -263,7 +309,7 @@ function renderGames(){const f=[['all','All'],['1','NES'],['2','Game Boy'],['3',
  <div class="grow ell">${esc(g.name)}</div><span class="badge ${(SYS[g.sys]||['?',''])[1]}">${(SYS[g.sys]||['?'])[0]}</span>
  <button class="small primary" onclick='play(${JSON.stringify(g.path)},${JSON.stringify(g.name)})'>▶</button></div>`).join(''):
  `<div class="muted">${games.length?'Nothing matches.':'No games yet: add some below.'}</div>`}
-function play(p,n){post('/api/launch?path='+encodeURIComponent(p)).then(()=>{toast('Starting '+n);show('play')})}
+function play(p,n){post('/api/launch?path='+encodeURIComponent(p)).then(()=>{toast(L('Starting {0}',n));show('play')})}
 function fav(p,on){post(`/api/fav?on=${on?1:0}&path=`+encodeURIComponent(p)).then(()=>{const g=games.find(g=>g.path==p);if(g)g.fav=on;renderGames()})}
 
 /* ---------- uploads ---------- */
@@ -288,16 +334,16 @@ async function loadFiles(d){cwd=d;$('cwd').textContent=d;let j;try{j=await api('
   return `<div><span>${f.dir?'📁':'📄'}</span><div class="grow ell" ${f.dir?`style="cursor:pointer" onclick='loadFiles(${P})'`:''}>${esc(f.name)}</div>
   ${f.dir?'':`<span class="muted">${size(f.size)}</span><button class="small" onclick='location.href="/api/file?path="+encodeURIComponent(${P})'>⇩</button>`}
   <button class="small" onclick='ren(${P})'>✎</button><button class="small warn" onclick='del(${P})'>✕</button></div>`}).join('')||'<div class="muted">Empty folder</div>')}
-function del(p){if(confirm('Delete '+p+'?'))api('/api/file?path='+encodeURIComponent(p),{method:'DELETE'}).then(()=>{toast('Deleted');loadFiles(cwd)}).catch(e=>toast('⚠ '+e.message))}
-function ren(p){const n=prompt('New name',p.split('/').pop());if(n)post(`/api/rename?from=${encodeURIComponent(p)}&to=${encodeURIComponent(p.replace(/[^/]+$/,n))}`).then(()=>loadFiles(cwd))}
-function mkdirHere(){const n=prompt('Folder name');if(n)post('/api/mkdir?path='+encodeURIComponent((cwd=='/'?'':cwd)+'/'+n)).then(()=>loadFiles(cwd))}
+function del(p){if(confirm(L('Delete {0}?',p)))api('/api/file?path='+encodeURIComponent(p),{method:'DELETE'}).then(()=>{toast('Deleted');loadFiles(cwd)}).catch(e=>toast('⚠ '+e.message))}
+function ren(p){const n=prompt(L('New name'),p.split('/').pop());if(n)post(`/api/rename?from=${encodeURIComponent(p)}&to=${encodeURIComponent(p.replace(/[^/]+$/,n))}`).then(()=>loadFiles(cwd))}
+function mkdirHere(){const n=prompt(L('Folder name'));if(n)post('/api/mkdir?path='+encodeURIComponent((cwd=='/'?'':cwd)+'/'+n)).then(()=>loadFiles(cwd))}
 $('ffile').onchange=e=>uploadMany([...e.target.files],cwd,$('fprog'),()=>loadFiles(cwd));
 
 /* ---------- wifi ---------- */
 function renderWifi(){const s=info.wifi;
- $('wstat').innerHTML=`<div class="row"><div class="grow"><div class="muted">Status</div><b>${s=='connected'?'Connected to '+esc(info.ssid):s=='connecting'?'Connecting to '+esc(info.ssid)+'…':s=='hotspot'?'Hotspot only':'Off'}</b>
+ $('wstat').innerHTML=`<div class="row"><div class="grow"><div class="muted">Status</div><b>${s=='connected'?L('Connected to {0}',esc(info.ssid)):s=='connecting'?L('Connecting to {0}…',esc(info.ssid)):s=='hotspot'?'Hotspot only':'Off'}</b>
  ${info.ip?`<div class="muted">Web UI: <a href="http://${info.ip}">http://${info.ip}</a> · ${info.rssi} dBm</div>`:''}</div></div>`;
- $('apchk').checked=info.hotspot;$('apinfo').textContent=`${info.ap_ssid} · password: retropocket · http://192.168.4.1`}
+ $('apchk').checked=info.hotspot;$('apinfo').textContent=`${info.ap_ssid} · ${L('password')}: retropocket · http://192.168.4.1`}
 async function scan(){const b=$('scanbtn');b.disabled=true;b.textContent='Scanning…';
  try{const j=await api('/api/wifi/scan');$('nets').innerHTML=j.networks.map(n=>{const bars=n.rssi>-55?4:n.rssi>-65?3:n.rssi>-75?2:1;
   return `<div style="cursor:pointer" onclick='askPass(${esc(JSON.stringify(n.ssid))},${n.secure})'><span>${'▂▄▆█'.slice(0,bars)}</span><div class="grow ell">${esc(n.ssid)}</div><span class="muted">${n.secure?'🔒':''} ${n.rssi} dBm</span></div>`}).join('')||'<div class="muted">No networks found</div>'}
@@ -305,15 +351,15 @@ async function scan(){const b=$('scanbtn');b.disabled=true;b.textContent='Scanni
 function askPass(ssid,secure){if(!ssid)return;$('jssid').textContent=ssid;$('jpass').value='';$('joincard').style.display='';$('joincard').dataset.ssid=ssid;
  if(!secure){join();return}$('jpass').focus();$('joincard').scrollIntoView({behavior:'smooth'})}
 function join(){const ssid=$('joincard').dataset.ssid;post('/api/wifi/connect',{ssid,pass:$('jpass').value}).then(()=>{$('joincard').style.display='none';
- toast('Connecting to '+ssid+'… the device shows its new IP');})}
+ toast(L('Connecting to {0}… the device shows its new IP',ssid));})}
 
 /* ---------- settings ---------- */
 let setT;
 async function loadSettings(){const s=await api('/api/settings');document.querySelectorAll('[data-s]').forEach(el=>{const v=s[el.dataset.s];
- if(el.type=='checkbox')el.checked=!!v;else el.value=v});$('bval').textContent=s.brightness+'%';
+ if(el.type=='checkbox')el.checked=!!v;else el.value=v});setLang(s.lang|0);$('bval').textContent=s.brightness+'%';
  $('orepo').value=s.ota_repo;$('obranch').value=s.ota_branch;$('opath').value=s.ota_path;$('otoken').value=s.ota_has_token?'********':''}
 document.querySelectorAll('[data-s]').forEach(el=>el.addEventListener(el.type=='range'?'input':'change',()=>{
- if(el.dataset.s=='brightness')$('bval').textContent=el.value+'%';clearTimeout(setT);
+ if(el.dataset.s=='brightness')$('bval').textContent=el.value+'%';if(el.dataset.s=='lang')setLang(+el.value);clearTimeout(setT);
  setT=setTimeout(()=>post('/api/settings',{[el.dataset.s]:el.type=='checkbox'?+el.checked:+el.value}).then(()=>toast('Saved')),150)}));
 function saveSrc(){post('/api/settings',{ota_repo:$('orepo').value,ota_branch:$('obranch').value,ota_path:$('opath').value,ota_token:$('otoken').value}).then(()=>toast('Update source saved'))}
 
@@ -322,7 +368,7 @@ function fmtUp(s){const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?`$
 function renderSystem(){const i=info;$('curver').textContent='v'+i.version;
  $('sysgrid').innerHTML=[['Firmware','v'+i.version],['IP address',i.ip||(i.hotspot?'192.168.4.1':'-')],['Uptime',fmtUp(i.uptime)],['Games',[[i.nes,'NES'],[i.gb,'GB'],[i.sms,'SMS'],[i.gg,'GG'],[i.pce,'PCE'],[i.doom,'WAD']].filter(([n])=>n).map(([n,t])=>n+' '+t).join(' · ')||'none'],
  ['Free RAM',size(i.heap)],['Free PSRAM',size(i.psram)]].map(([k,v])=>`<div class="stat"><span class="muted">${k}</span><b>${esc(v)}</b></div>`).join('');
- if(i.sd_total){$('sdtxt').textContent=`${size(i.sd_total-i.sd_free)} used of ${size(i.sd_total)}`;$('sdbar').style.width=((1-i.sd_free/i.sd_total)*100)+'%'}else $('sdtxt').textContent='no card';
+ if(i.sd_total){$('sdtxt').textContent=L('{0} used of {1}',size(i.sd_total-i.sd_free),size(i.sd_total));$('sdbar').style.width=((1-i.sd_free/i.sd_total)*100)+'%'}else $('sdtxt').textContent='no card';
  const o=i.ota;if(o.message)$('otamsg').textContent=o.message;else if(o.rollback)$('otamsg').innerHTML='⚠ '+esc(o.rollback);$('instbtn').style.display=o.available==1&&o.phase=='idle'?'':'none';
  $('otabarw').style.display=o.phase=='downloading'||o.phase=='done'?'':'none';$('otabar').style.width=o.percent+'%';
  if(o.phase=='checking'||o.phase=='downloading')setTimeout(loadInfo,800)}
@@ -331,10 +377,11 @@ function otaCheck(install){post('/api/ota/check?install='+(install?1:0)).then(()
 function otaUpload(){const f=$('otafile').files[0];if(!f)return toast('Pick the .bin file first');
  const x=new XMLHttpRequest();x.open('POST','/api/ota/upload');$('otabarw').style.display='';
  x.upload.onprogress=e=>$('otabar').style.width=(e.loaded/e.total*100)+'%';
- x.onload=()=>{let j={};try{j=JSON.parse(x.responseText)}catch(e){}if(x.status==200){$('otamsg').textContent=`Installed v${j.version}! The device is restarting…`;toast('Installed v'+j.version+', restarting');setTimeout(()=>location.reload(),12000)}else toast('⚠ '+(j.error||'Upload failed'))};
+ x.onload=()=>{let j={};try{j=JSON.parse(x.responseText)}catch(e){}if(x.status==200){$('otamsg').textContent=L('Installed v{0}! The device is restarting…',j.version);toast(L('Installed v{0}, restarting',j.version));setTimeout(()=>location.reload(),12000)}else toast('⚠ '+(j.error||'Upload failed'))};
  x.onerror=()=>toast('⚠ Upload failed');x.send(f)}
 
 show((location.hash||'#play').slice(1));loadInfo();wsOpen();
+api('/api/settings').then(s=>setLang(s.lang|0)).catch(()=>{});
 </script>
 </body>
 </html>

@@ -142,6 +142,7 @@ int main(void)
     wifi_start();
     display_init();
     if (getenv("SIM_ROT")) g_settings.rotation = atoi(getenv("SIM_ROT"));
+    if (getenv("SIM_LANG")) g_settings.lang = atoi(getenv("SIM_LANG"));
     display_set_rotation(g_settings.rotation, false);
     input_init();
     sd_init();

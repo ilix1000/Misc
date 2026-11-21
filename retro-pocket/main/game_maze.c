@@ -10,6 +10,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "emulators.h"
+#include "i18n.h"
 #include "system.h"
 #include "bridge.h"
 #include "display.h"
@@ -208,15 +209,15 @@ void game_maze_run(const char *unused)
         uint16_t *fb = display_fb();
         render(fb, (now - start) / 1e6f);
         if (k & BTN_SELECT) draw_map(fb);
-        snprintf(hud, sizeof(hud), "LV %d  %ds", level, (int)((now - start) / 1000000));
+        snprintf(hud, sizeof(hud), T("LV %d  %ds"), level, (int)((now - start) / 1000000));
         gfx_text(fb, W - (int)strlen(hud) * CHAR_W - 2, 2, hud, C_TEXT, 0);
         if (g_settings.show_fps) draw_fps(fb, pacer.fps);
         display_present();
 
         if (at_exit) {
             char l1[32], l2[32];
-            snprintf(l1, sizeof(l1), "Level %d cleared!", level);
-            snprintf(l2, sizeof(l2), "Time: %ds", (int)((now - start) / 1000000));
+            snprintf(l1, sizeof(l1), T("Level %d cleared!"), level);
+            snprintf(l2, sizeof(l2), T("Time: %ds"), (int)((now - start) / 1000000));
             message_box(l1, l2, 0);
             level++;
             int cells = 3 + level;

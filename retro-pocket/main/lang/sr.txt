@@ -1,0 +1,174 @@
+# Serbian (Latin) translation of the device UI.
+# Format: English text|Srpski tekst   (run tools/gen_i18n.py after editing)
+# Keep %d / %s exactly as in the English text. "<text>#2" is the plural
+# form used for 2-4 (e.g. 3 igre); <text> itself is used for 0, 5+ (igara).
+
+# home cards
+Recent|Skorašnje
+Favorites|Omiljene
+Built-in|Ugrađene
+Settings|Podešavanja
+Networks|Mreže
+QR code|QR kod
+%d played|Odigrano: %d
+Nothing yet|Još ništa
+START to add|START za dodavanje
+%d game|%d igra
+%d games|%d igara
+%d games#2|%d igre
+Connecting...|Povezivanje...
+Hotspot on|Hotspot uklj.
+Off|Isklj.
+On|Uklj.
+
+# game lists
+No games here yet|Još nema igara
+Copy .zip .nes .gb files|Kopiraj .zip .nes .gb
+to the SD card or web UI|na SD karticu ili web UI
+Nothing played yet|Još ništa nisi igrao
+Games you play|Igre koje igraš
+show up here|pojaviće se ovde
+No favorites yet|Još nema omiljenih
+Press START on a game|Pritisni START na igri
+to add it here|da je dodaš ovde
+First-person maze. Find the green exit!|Lavirint iz prvog lica. Nađi zeleni izlaz!
+Added to favorites|Dodato u omiljene
+Removed from favorites|Uklonjeno iz omiljenih
+Not a game I can run|Ne mogu da pokrenem ovu igru
+Loading...|Učitavanje...
+Looking for games|Tražim igre
+%d found|Nađeno: %d
+%d files checked|Provereno fajlova: %d
+
+# footers
+A Play  B Back|A Igraj  B Nazad
+A Play  START Fav|A Igraj  START Omilj.
+A Play B Back START Fav|A Igraj B Nazad START Om.
+A Select  B Back|A Izaberi  B Nazad
+A Join START Rescan|A Poveži START Opet
+A Join START Rescan B Back|A Poveži START Opet B Nazad
+</> Change  B Back|</> Promeni  B Nazad
+
+# settings
+Language|Jezik
+Brightness|Osvetljenje
+Screen|Ekran
+Landscape|Položeno
+Portrait|Uspravno
+Land 180|Položeno 180
+Port 180|Uspravno 180
+Stick|Džojstik
+%d deg|%d step.
+Swap red/blue|Zameni crv./plavu
+GB colors|GB boje
+Green|Zelena
+Grey|Siva
+Warm|Topla
+Color|U boji
+NES view|NES prikaz
+Trim|Isečen
+Full|Ceo
+Show FPS|Prikaži FPS
+Animations|Animacije
+Rescan SD card|Skeniraj SD karticu
+Update|Ažuriranje
+Checking|Proveravam
+Get v%s|Preuzmi v%s
+Up to date|Ažurno
+Failed|Neuspešno
+Check|Proveri
+Version|Verzija
+Connect to Wi-Fi first|Prvo se poveži na Wi-Fi
+Update installed!|Ažuriranje instalirano!
+Updating firmware|Ažuriram firmver
+Restarting...|Restartujem...
+%d%%  don't turn off|%d%%  ne isključuj
+
+# Wi-Fi
+Find networks|Pronađi mreže
+Hotspot|Hotspot
+Show QR code|Prikaži QR kod
+Forget network|Zaboravi mrežu
+Network forgotten|Mreža je zaboravljena
+Turn Wi-Fi on first|Prvo uključi Wi-Fi
+Turn on Wi-Fi first|Prvo uključi Wi-Fi
+Web UI:|Web UI:
+Joining %s|Povezujem: %s
+Joining %s...|Povezujem: %s...
+Password: %s|Lozinka: %s
+Open %s|Otvori %s
+Wi-Fi is off|Wi-Fi je isključen
+Looking for networks|Tražim mreže
+No networks found|Nema pronađenih mreža
+START to scan again|START za novu pretragu
+1. Scan to join hotspot|1. Skeniraj za hotspot
+2. Open %s|2. Otvori %s
+Scan to open web UI|Skeniraj za web UI
+Hotspot %s on|Hotspot %s uključen
+Set up Wi-Fi: join the hotspot|Podesi Wi-Fi: poveži se na hotspot
+Wi-Fi connected: %s|Wi-Fi povezan: %s
+Wi-Fi lost, reconnecting|Wi-Fi prekinut, ponovo se povezujem
+
+# keyboard
+Space|Razmak
+Del|Briši
+
+# pause menu
+Resume|Nastavi
+Save state|Sačuvaj stanje
+Load state|Učitaj stanje
+Reset|Resetuj
+Quit|Izađi
+
+# emulators
+State saved|Stanje sačuvano
+Save failed|Čuvanje nije uspelo
+State loaded|Stanje učitano
+No saved state|Nema sačuvanog stanja
+Can't read ROM|Ne mogu da pročitam ROM
+Can't load this ROM|Ne mogu da učitam ovaj ROM
+Out of memory|Nema dovoljno memorije
+Unsupported ROM|Nepodržan ROM
+Unsupported cartridge|Nepodržan kertridž
+Bad ROM checksum|Loš kontrolni zbir ROM-a
+Mapper %d|Maper %d
+CPU crashed|Procesor se srušio
+(bad opcode)|(loša instrukcija)
+Not a PC Engine ROM|Nije PC Engine ROM
+PC Engine init failed|PC Engine nije pokrenut
+Leaving Doom...|Izlazim iz Doom-a...
+Restarting to the menu|Restart u meni
+Unpacking WAD...|Raspakujem WAD...
+No .wad in this zip|Nema .wad u ovom zip-u
+This is a mod (PWAD)|Ovo je mod (PWAD)
+Put DOOM2/DOOM/FREEDOOM WAD next to it|Stavi DOOM2/DOOM/FREEDOOM WAD pored
+LV %d  %ds|NIV %d  %ds
+Level %d cleared!|Nivo %d pređen!
+Time: %ds|Vreme: %ds
+
+# online update
+Updated to v%s|Ažurirano na v%s
+Checking for updates...|Proveravam ažuriranja...
+GitHub said %d (private repo? add a token)|GitHub je vratio %d (privatan repo? dodaj token)
+GitHub error %d|GitHub greška %d
+No internet connection|Nema interneta
+Up to date (v%s)|Ažurno (v%s)
+Update available: v%s|Dostupno ažuriranje: v%s
+Downloading...|Preuzimam...
+Online file isn't Retro Pocket firmware|Fajl na mreži nije Retro Pocket firmver
+Installed! Restarting...|Instalirano! Restartujem...
+Update failed: %s|Ažuriranje nije uspelo: %s
+Connect to Wi-Fi with internet first|Prvo se poveži na Wi-Fi sa internetom
+Not an ESP32 firmware file|Ovo nije ESP32 firmver
+Not an app image (wrong file?)|Nije app fajl (pogrešan fajl?)
+That's firmware for '%.24s', not Retro Pocket|To je firmver za '%.24s', ne za Retro Pocket
+No room for the update|Nema mesta za ažuriranje
+Flash write failed|Upis u fleš nije uspeo
+Installing v%s...|Instaliram v%s...
+An update is already running|Ažuriranje je već u toku
+Receiving upload...|Primam fajl...
+Firmware file is damaged (incomplete upload?)|Firmver je oštećen (nepotpun upload?)
+Install failed: %s|Instalacija nije uspela: %s
+Installed v%s! Restarting...|Instaliran v%s! Restartujem...
+Upload interrupted|Upload je prekinut
+Update to v%.20s didn't start, kept v%s|v%.20s se nije pokrenuo, vraćen v%s

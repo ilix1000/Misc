@@ -13,6 +13,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include "webui.h"
+#include "i18n.h"
 #include "board.h"
 #include "bridge.h"
 #include "display.h"
@@ -138,8 +139,10 @@ static esp_err_t fail(httpd_req_t *req, const char *status, const char *msg)
     httpd_resp_set_status(req, status);
     httpd_resp_set_type(req, "application/json");
     char b[160], *p = b;
+    char u8[100];
+    i18n_to_utf8(msg, u8, sizeof(u8));
     p += sprintf(p, "{\"ok\":false,\"error\":");
-    jstr(&p, b + sizeof(b) - 2, msg);
+    jstr(&p, b + sizeof(b) - 2, u8);
     strcpy(p, "}");
     return httpd_resp_sendstr(req, b);
 }
@@ -222,9 +225,12 @@ static esp_err_t h_info(httpd_req_t *req)
     cJSON_AddStringToObject(u, "phase", phases[st.phase]);
     cJSON_AddNumberToObject(u, "percent", st.percent);
     cJSON_AddStringToObject(u, "latest", st.latest);
-    cJSON_AddStringToObject(u, "message", st.message);
+    char u8[160];
+    i18n_to_utf8(st.message, u8, sizeof(u8));
+    cJSON_AddStringToObject(u, "message", u8);
     cJSON_AddNumberToObject(u, "available", ota_update_available());
-    cJSON_AddStringToObject(u, "rollback", ota_rollback_info());
+    i18n_to_utf8(ota_rollback_info(), u8, sizeof(u8));
+    cJSON_AddStringToObject(u, "rollback", u8);
     return send_json(req, o);
 }
 
@@ -441,6 +447,7 @@ static esp_err_t h_settings_get(httpd_req_t *req)
     cJSON_AddNumberToObject(o, "nes_scale", g_settings.nes_scale);
     cJSON_AddNumberToObject(o, "show_fps", g_settings.show_fps);
     cJSON_AddNumberToObject(o, "ui_anim", g_settings.ui_anim);
+    cJSON_AddNumberToObject(o, "lang", g_settings.lang);
     ota_source_t src;
     ota_source_get(&src);
     cJSON_AddStringToObject(o, "ota_repo", src.repo);
@@ -477,6 +484,7 @@ static esp_err_t h_settings_post(httpd_req_t *req)
     set_int(o, "nes_scale", &g_settings.nes_scale, 0, 1);
     set_int(o, "show_fps", &g_settings.show_fps, 0, 1);
     set_int(o, "ui_anim", &g_settings.ui_anim, 0, 1);
+    set_int(o, "lang", &g_settings.lang, 0, LANG_COUNT - 1);
     if (cJSON_GetObjectItem(o, "ota_repo")) {
         ota_source_t src;
         ota_source_get(&src);

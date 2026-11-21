@@ -172,3 +172,27 @@ Install failed: %s|Instalacija nije uspela: %s
 Installed v%s! Restarting...|Instaliran v%s! Restartujem...
 Upload interrupted|Upload je prekinut
 Update to v%.20s didn't start, kept v%s|v%.20s se nije pokrenuo, vraćen v%s
+
+# Pocket City
+Open-world city: drive, take jobs, lose the cops!|Otvoreni grad: vozi, radi poslove, beži od policije!
+JOB DONE!|POSAO GOTOV!
+JOB FAILED|NEUSPEH
+TAXI|TAKSI
+Drive the passenger there|Odvezi putnika do cilja
+RACE|TRKA
+Hit every checkpoint|Prođi kroz sve tačke
+DELIVERY|DOSTAVA
+Bring the orange car in one piece|Dovezi narandžasta kola cela
+Get in a car first|Prvo uđi u kola
+%d km/h|%d km/h
+Yellow: taxi  Red: race|Žuto: taksi  Crveno: trka
+Green: delivery|Zeleno: dostava
+BUSTED|UHAPŠEN
+The cops took 10% of your cash|Policija ti je uzela 10% para
+Radio: %s|Radio: %s
+WRECKED|UNIŠTENO
+Hey! Watch it!|Hej! Pazi malo!
+You lost the cops|Pobegao si policiji
+POCKET CITY|POCKET CITY
+Find a colored pillar to start a job|Nađi obojeni stub za posao
+A: get in|A: uđi

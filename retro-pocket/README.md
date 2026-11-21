@@ -22,6 +22,7 @@ you only flash it by USB once.
 | Game Gear   | SMS Plus (GPLv2) | `.gg`. Full 160x144 screen, own colour palette. Save states, battery saves. |
 | PC Engine / TurboGrafx-16 | [PCE-GO](https://github.com/ducalex/retro-go) (GPLv2, via Retro-Go) | `.pce` HuCards (not CD games). Pad = d-pad, I, II, Select, Run: maps 1:1. Save states. |
 | Doom        | [PrBoom](https://github.com/ducalex/retro-go) (GPLv2, via Retro-Go) | `.wad` (or zipped). The real Doom engine, drawn natively at 160x128, up to 35 fps. Shareware `DOOM1.WAD` is in [`sd-card/`](sd-card/). Full DOOM/DOOM2 WADs you own and [Freedoom](https://freedoom.github.io) work too; mods (PWADs) run on top of an IWAD in the same folder or `/roms/doom`. No sound. |
+| Built-in    | Pocket City | An original open-world 3D driving game: a whole city with traffic, pedestrians, day/night, police chases (1-5 stars) and taxi / race / delivery jobs that pay cash (saved to the SD card). |
 | Built-in    | Maze Runner 3D | An original first-person 3D maze game (raycaster) with analog movement, so you get some 3D on the device. |
 
 There is no sound yet, because the parts list has no speaker. See "Ideas" below.
@@ -105,6 +106,12 @@ The buttons use the chip's internal pull-ups, so you don't need resistors.
 |       | SELECT             | Next weapon |
 |       | START              | Doom's menu (new game, save / load, options) |
 |       | Click stick        | Automap. **Hold 1 s to quit** (the device restarts into the menu) |
+| Pocket City | Stick (on foot) | Walk / turn; B = run; A = get into the nearest car |
+|       | Stick (driving)    | Up = gas, down = brake / reverse, left/right = steer |
+|       | B (driving)        | Handbrake (drift) |
+|       | A (driving)        | Get out (when slow) |
+|       | SELECT / START     | Change camera / city map |
+|       | Click stick        | Pause menu |
 | Maze Runner 3D | Stick     | Walk / turn (analog) |
 |       | A (hold)           | Sprint |
 |       | B (hold)           | Strafe instead of turning |
@@ -284,6 +291,7 @@ main/emu_pce.c     PC Engine front-end
 main/emu_doom.c    Doom platform layer (video, input, WAD handling)
 main/video.c       shared scaler + second-core display for the Retro-Go cores
 components/        SMS Plus, PCE-GO and PrBoom (GPLv2, from Retro-Go) + rg_compat shim
+main/game_city.c   Pocket City (open-world driving, own flat-shaded 3D renderer)
 main/game_maze.c   Maze Runner 3D
 main/cores/        third-party code: Peanut-GB, agnes, qrcodegen (all MIT)
 tools/gen_font.py  generates the 5x7 UI font

@@ -57,6 +57,7 @@ static const struct { const char *title; const uint16_t *icon; uint32_t color; }
 };
 
 static const struct { const char *name; const char *desc; void (*run)(const char *); } builtins[] = {
+    { "Pocket City", "Open-world city: drive, take jobs, lose the cops!", game_city_run },
     { "Maze Runner 3D", "First-person maze. Find the green exit!", game_maze_run },
 };
 #define BUILTIN_COUNT ((int)(sizeof(builtins) / sizeof(builtins[0])))

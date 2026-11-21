@@ -11,6 +11,7 @@ size_t gb_cart_ram_size(const uint8_t *rom, size_t size);
 void emu_nes_run(const char *path);
 void emu_sms_run(const char *path);   /* Master System, Game Gear, SG-1000 */
 void emu_pce_run(const char *path);   /* PC Engine / TurboGrafx-16 */
+void emu_doom_run(const char *path);  /* Doom WADs (restarts the device when you quit) */
 void game_maze_run(const char *unused);
 
 #define GB_PALETTE_COUNT 5

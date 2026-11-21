@@ -24,7 +24,7 @@ static const char *TAG = "scan";
 #define MAX_DEPTH   6
 /* v2: bump the name whenever the list of systems changes, so zips that
  * held a newly supported system get looked at again. */
-#define CACHE_FILE  DIR_SAVES "/zipcache2.txt"
+#define CACHE_FILE  DIR_SAVES "/zipcache3.txt"
 
 static const char *const sys_exts[SYS_COUNT] = {
     [SYS_NES] = ".nes",
@@ -32,8 +32,9 @@ static const char *const sys_exts[SYS_COUNT] = {
     [SYS_SMS] = ".sms .sg",
     [SYS_GG]  = ".gg",
     [SYS_PCE] = ".pce",
+    [SYS_DOOM] = ".wad",
 };
-#define ALL_ROM_EXTS ".nes .gb .gbc .dmg .sms .sg .gg .pce"
+#define ALL_ROM_EXTS ".nes .gb .gbc .dmg .sms .sg .gg .pce .wad"
 
 static game_t *s_games[SYS_COUNT];
 static int s_count[SYS_COUNT];
@@ -358,6 +359,7 @@ const char *sys_name(int sys)
         case SYS_SMS: return "Master System";
         case SYS_GG: return "Game Gear";
         case SYS_PCE: return "PC Engine";
+        case SYS_DOOM: return "Doom";
         default: return "?";
     }
 }

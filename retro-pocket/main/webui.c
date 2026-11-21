@@ -213,6 +213,7 @@ static esp_err_t h_info(httpd_req_t *req)
     cJSON_AddNumberToObject(o, "sms", games_count(SYS_SMS));
     cJSON_AddNumberToObject(o, "gg", games_count(SYS_GG));
     cJSON_AddNumberToObject(o, "pce", games_count(SYS_PCE));
+    cJSON_AddNumberToObject(o, "doom", games_count(SYS_DOOM));
     lib_unlock();
     ota_status_t st;
     ota_status(&st);
@@ -375,7 +376,7 @@ static esp_err_t h_upload(httpd_req_t *req)
     }
     unlink(path);
     rename(tmp, path);
-    if (has_ext(path, ".zip .nes .gb .gbc .dmg .sms .sg .gg .pce")) bridge_request(REQ_RESCAN);
+    if (has_ext(path, ".zip .nes .gb .gbc .dmg .sms .sg .gg .pce .wad")) bridge_request(REQ_RESCAN);
     return ok(req);
 }
 

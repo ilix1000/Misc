@@ -179,6 +179,23 @@ ICONS = {
 "................",
 "................",
 "................"],
+'DOOM': [
+"................",
+".k............k.",
+"kok..........kok",
+"koo.kkkkkkkk.ook",
+".kookrrrrrrkook.",
+"..kkrrrrrrrrkk..",
+"...krrrrrrrrk...",
+"...kkkrrrrkkk...",
+"...kykkrrkkyk...",
+"...krkkrrkkrk...",
+"...krrrkkrrrk...",
+"....krrkkrrk....",
+"....kkwkwkkk....",
+".....kwkwkk.....",
+"......kkkk......",
+"................"],
 }
 SMALL = {  # 8x8 for list rows / status bar
 'LOCK': ["..kkkk..", ".k....k.", ".k....k.", "kkkkkkkk", "kyyyyyyk", "kyykkyyk", "kyyyyyyk", "kkkkkkkk"],

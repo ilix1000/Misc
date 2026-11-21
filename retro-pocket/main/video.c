@@ -95,6 +95,7 @@ bool video_submit(const uint8_t *src, int pitch, const uint16_t *palette)
     return true;
 }
 void video_wait(void) {}
+bool video_busy(void) { return false; }
 #else
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -123,6 +124,11 @@ bool video_submit(const uint8_t *src, int pitch, const uint16_t *palette)
     take_frame(src, pitch, palette);
     xSemaphoreGive(s_work);
     return true;
+}
+
+bool video_busy(void)
+{
+    return s_idle && uxSemaphoreGetCount(s_idle) == 0;
 }
 
 void video_wait(void)

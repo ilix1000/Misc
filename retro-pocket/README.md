@@ -21,6 +21,7 @@ you only flash it by USB once.
 | Master System / SG-1000 | [SMS Plus](https://github.com/ducalex/retro-go) (GPLv2, via Retro-Go) | `.sms` `.sg`. Pad = d-pad + 2 buttons, so it maps 1:1. Save states, battery saves. |
 | Game Gear   | SMS Plus (GPLv2) | `.gg`. Full 160x144 screen, own colour palette. Save states, battery saves. |
 | PC Engine / TurboGrafx-16 | [PCE-GO](https://github.com/ducalex/retro-go) (GPLv2, via Retro-Go) | `.pce` HuCards (not CD games). Pad = d-pad, I, II, Select, Run: maps 1:1. Save states. |
+| Doom        | [PrBoom](https://github.com/ducalex/retro-go) (GPLv2, via Retro-Go) | `.wad` (or zipped). The real Doom engine, drawn natively at 160x128, up to 35 fps. Shareware `DOOM1.WAD` is in [`sd-card/`](sd-card/). Full DOOM/DOOM2 WADs you own and [Freedoom](https://freedoom.github.io) work too; mods (PWADs) run on top of an IWAD in the same folder or `/roms/doom`. No sound. |
 | Built-in    | Maze Runner 3D | An original first-person 3D maze game (raycaster) with analog movement, so you get some 3D on the device. |
 
 There is no sound yet, because the parts list has no speaker. See "Ideas" below.
@@ -98,6 +99,12 @@ The buttons use the chip's internal pull-ups, so you don't need resistors.
 |       | START              | Start |
 | PC Engine | A / B          | I / II |
 |       | START / SELECT     | Run / Select |
+| Doom  | Stick              | Walk / turn (always running) |
+|       | A                  | Fire (and select in Doom's menus) |
+|       | B                  | Open doors / switches; hold + stick left/right = strafe; back in menus |
+|       | SELECT             | Next weapon |
+|       | START              | Doom's menu (new game, save / load, options) |
+|       | Click stick        | Automap. **Hold 1 s to quit** (the device restarts into the menu) |
 | Maze Runner 3D | Stick     | Walk / turn (analog) |
 |       | A (hold)           | Sprint |
 |       | B (hold)           | Strafe instead of turning |
@@ -265,8 +272,9 @@ main/emu_gb.c      Game Boy front-end
 main/emu_nes.c     NES front-end
 main/emu_sms.c     Master System / Game Gear / SG-1000 front-end
 main/emu_pce.c     PC Engine front-end
+main/emu_doom.c    Doom platform layer (video, input, WAD handling)
 main/video.c       shared scaler + second-core display for the Retro-Go cores
-components/        SMS Plus and PCE-GO (GPLv2, from Retro-Go) + rg_compat shim
+components/        SMS Plus, PCE-GO and PrBoom (GPLv2, from Retro-Go) + rg_compat shim
 main/game_maze.c   Maze Runner 3D
 main/cores/        third-party code: Peanut-GB, agnes, qrcodegen (all MIT)
 tools/gen_font.py  generates the 5x7 UI font
@@ -291,7 +299,8 @@ third-party emulator cores:
 | Part | License |
 |------|---------|
 | Peanut-GB (+ Color branch), agnes, qrcodegen | MIT |
-| SMS Plus, PCE-GO (`components/`) | GPLv2 (from Retro-Go) |
+| SMS Plus, PCE-GO, PrBoom (`components/`) | GPLv2 (from Retro-Go) |
+| `sd-card/roms/doom/DOOM1.WAD` | id Software shareware: free to share unmodified |
 
 Because the GPLv2 cores are linked in, the **firmware binary as a whole is
 GPLv2**: if you give the `.bin` to others, also offer them this source (keeping

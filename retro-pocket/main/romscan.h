@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 /* Values are stored in the zip cache and used by the web UI: only append. */
-typedef enum { SYS_NONE = 0, SYS_NES, SYS_GB, SYS_SMS, SYS_GG, SYS_PCE, SYS_COUNT } sys_t;
+typedef enum { SYS_NONE = 0, SYS_NES, SYS_GB, SYS_SMS, SYS_GG, SYS_PCE, SYS_DOOM, SYS_COUNT } sys_t;
 
 typedef struct {
     const char *path;   /* full path on the SD card (.nes/.gb/... or .zip) */

@@ -7,7 +7,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-/* Area of the console picture to show (w x h at x,y inside its buffer). */
+/* Size of the picture that will be submitted (the source is scaled to the panel). */
 void video_setup(int src_w, int src_h);
 
 /* Hands a finished frame to core 0, which scales it and sends it to the
@@ -15,6 +15,9 @@ void video_setup(int src_w, int src_h);
  * Returns false (frame dropped) if core 0 is still busy with the last one;
  * the caller must not touch `src` until the next successful call. */
 bool video_submit(const uint8_t *src, int pitch, const uint16_t *palette);
+
+/* true while core 0 is still showing the last frame. */
+bool video_busy(void);
 
 /* Waits until core 0 is idle (before menus or exiting). */
 void video_wait(void);

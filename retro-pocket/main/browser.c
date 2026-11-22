@@ -36,6 +36,9 @@
 #endif
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#ifndef SIM
+#include "freertos/idf_additions.h"
+#endif
 
 #define W LCD_WIDTH
 #define H LCD_HEIGHT
@@ -202,7 +205,7 @@ static bool resolve_url(const char *base, const char *href, char *out, size_t n)
     if (!*href || *href == '#') return false;
     const char *p = href;
     while (isalnum((unsigned char)*p) || *p == '+' || *p == '-' || *p == '.') p++;
-    char tmp[URL_MAX * 2];
+    static char tmp[URL_MAX * 2];
     if (*p == ':' && p > href) {
         if (strncasecmp(href, "http:", 5) && strncasecmp(href, "https:", 6) && strncasecmp(href, "rp:", 3)) return false;
         snprintf(tmp, sizeof(tmp), "%s", href);
@@ -228,7 +231,7 @@ static bool resolve_url(const char *base, const char *href, char *out, size_t n)
         if (root) {
             char *q = root + strcspn(root, "?#");
             char save = *q; *q = 0;
-            char seg[URL_MAX * 2];
+            static char seg[URL_MAX * 2];
             size_t k = 0;
             for (char *s = root; *s;) {
                 if (!strncmp(s, "/./", 3)) { s += 2; continue; }
@@ -959,7 +962,7 @@ static void home_page(void)
 }
 
 /* Loads url (POST body optional). Returns false if nothing changed. */
-static bool load(const char *url, const char *post)
+static bool load_now(const char *url, const char *post)
 {
     if (!strcmp(url, "rp:home")) { home_page(); return true; }
     if (!net_ready()) { message_box(T("Connect to Wi-Fi first"), T("Wi-Fi card on the home screen"), 0); return false; }
@@ -1013,6 +1016,61 @@ static bool load(const char *url, const char *post)
         snprintf(s_title, sizeof(s_title), "%s", m);
     }
     return true;
+}
+
+
+/* HTTPS (TLS handshakes) needs a lot of stack, more than the menu task has
+ * left at this depth, so network work runs in its own task with a big stack
+ * while the menu task waits. */
+typedef struct { const char *url, *post; bool ret, ext_stack; int link; volatile bool done; } job_t;
+static void download_link_now(int id);
+
+#ifndef SIM
+static void job_load_task(void *p)
+{
+    job_t *j = p;
+    if (j->link >= 0) download_link_now(j->link);
+    else j->ret = load_now(j->url, j->post);
+    bool ext = j->ext_stack;
+    j->done = true;
+    if (ext) vTaskDeleteWithCaps(NULL);
+    else vTaskDelete(NULL);
+}
+#endif
+
+static bool run_job(job_t *j)
+{
+    j->done = false;
+#ifndef SIM
+    /* stack in internal RAM if there's room, otherwise in PSRAM */
+    j->ext_stack = false;
+    bool ok = xTaskCreatePinnedToCore(job_load_task, "web", 24 * 1024, j, 5, NULL, 1) == pdPASS;
+    if (!ok) {
+        j->ext_stack = true;
+        ok = xTaskCreatePinnedToCoreWithCaps(job_load_task, "web", 24 * 1024, j, 5, NULL, 1,
+                                             MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT) == pdPASS;
+    }
+    if (ok) {
+        while (!j->done) vTaskDelay(pdMS_TO_TICKS(10));
+        vTaskDelay(pdMS_TO_TICKS(20)); /* let the task finish deleting itself */
+        return j->ret;
+    }
+#endif
+    if (j->link >= 0) download_link_now(j->link);
+    else j->ret = load_now(j->url, j->post);
+    return j->ret;
+}
+
+static bool load(const char *url, const char *post)
+{
+    job_t j = { .url = url, .post = post, .link = -1 };
+    return run_job(&j);
+}
+
+static void download_link(int id)
+{
+    job_t j = { .link = id };
+    run_job(&j);
 }
 
 /* simpler, explicit navigation helper used everywhere */
@@ -1136,7 +1194,7 @@ static void add_bookmark(void)
     ui_toast(T("Bookmark added"));
 }
 
-static void download_link(int id)
+static void download_link_now(int id)
 {
     if (id < 0 || id >= s_nlinks || s_links[id].type != L_LINK || strncmp(s_links[id].url, "http", 4)) return;
     if (!net_ready()) { message_box(T("Connect to Wi-Fi first"), NULL, 0); return; }

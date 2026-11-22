@@ -89,10 +89,22 @@ bool sd_init(void)
     esp_vfs_fat_sdmmc_mount_config_t mc = {
         .format_if_mount_failed = false, .max_files = 4, .allocation_unit_size = 16 * 1024,
     };
-    sdmmc_card_t *card;
-    esp_err_t err = esp_vfs_fat_sdspi_mount(SD_MOUNT, &host, &slot, &mc, &card);
+    sdmmc_card_t *card = NULL;
+    /* Hand-wired SD slots (long wires, perfboard) often give CRC errors at full
+     * speed, so retry slower before giving up. */
+    static const int speeds_khz[] = { SD_SPI_KHZ, 10000, 4000, 1000 };
+    esp_err_t err = ESP_FAIL;
+    for (int i = 0; i < (int)(sizeof(speeds_khz) / sizeof(speeds_khz[0])); i++) {
+        host.max_freq_khz = speeds_khz[i];
+        err = esp_vfs_fat_sdspi_mount(SD_MOUNT, &host, &slot, &mc, &card);
+        if (err == ESP_OK) {
+            if (i) ESP_LOGW(TAG, "SD card works at %d kHz only - check the SD wiring", speeds_khz[i]);
+            break;
+        }
+        ESP_LOGE(TAG, "SD mount at %d kHz failed: %s", speeds_khz[i], esp_err_to_name(err));
+    }
     if (err != ESP_OK) {
-        ESP_LOGE(TAG, "SD mount failed: %s", esp_err_to_name(err));
+        spi_bus_free(SPI3_HOST);
         return false;
     }
     sdmmc_card_print_info(stdout, card);

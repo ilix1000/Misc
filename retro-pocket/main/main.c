@@ -10,6 +10,7 @@
 #include "webui.h"
 #include "wifi.h"
 #include "esp_log.h"
+#include "esp_heap_caps.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
@@ -40,5 +41,9 @@ void app_main(void)
     ESP_LOGI("main", "network started");
 
     /* ...games and the menu on core 1. */
-    xTaskCreatePinnedToCore(app_task, "app", 20 * 1024, NULL, 5, NULL, 1);
+    if (xTaskCreatePinnedToCore(app_task, "app", 20 * 1024, NULL, 5, NULL, 1) != pdPASS) {
+        ESP_LOGE("main", "not enough RAM for the menu task (%u bytes free)",
+                 (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
+        app_task(NULL);   /* run it right here instead */
+    }
 }

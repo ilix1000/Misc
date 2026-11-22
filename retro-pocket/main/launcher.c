@@ -452,6 +452,7 @@ static void draw_game_list(uint16_t *fb, float dt)
         gfx_icon(fb, W / 2 - 16, H / 2 - 30 + (int)(sinf(S.t * 2) * 2), cards[c].icon, 16, 2);
         const char *l1 = "No games here yet", *l2 = "Copy .zip .nes .gb files";
         const char *l3 = "to the SD card or web UI";
+        if (!sd_ok()) { l1 = "No SD card found"; l2 = "Check the card is FAT32"; l3 = "and the SD wiring"; }
         if (c == CARD_RECENT) { l1 = "Nothing played yet"; l2 = "Games you play"; l3 = "show up here"; }
         if (c == CARD_FAVS)   { l1 = "No favorites yet"; l2 = "Press START on a game"; l3 = "to add it here"; }
         gfx_text_center(fb, H / 2 + 8, T(l1), C_TEXT);
@@ -880,6 +881,7 @@ void launcher_run(void)
     S.trans = 1;
     splash();
     rescan();
+    if (!sd_ok()) ui_toast(T("No SD card - check wiring"));
     /* start on the first card that has something in it */
     S.home_sel = CARD_BUILTIN;
     if (lib_recent_count()) S.home_sel = CARD_RECENT;

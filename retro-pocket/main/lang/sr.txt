@@ -226,3 +226,9 @@ Bookmark this page|Obeleži ovu stranicu
 Save link to SD card|Sačuvaj link na SD
 Simple view (FrogFind)|Jednostavan prikaz (FrogFind)
 Exit browser|Izađi iz pregledača
+
+# SD card
+No SD card - check wiring|Nema SD kartice - proveri žice
+No SD card found|Nema SD kartice
+Check the card is FAT32|Kartica mora biti FAT32
+and the SD wiring|i proveri žice za SD

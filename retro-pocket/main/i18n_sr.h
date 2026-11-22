@@ -44,6 +44,7 @@ static const char *const i18n_sr[][2] = {
     { "Can't read ROM", "Ne mogu da pro\x84itam ROM" },
     { "Can't write to the SD card", "Ne mogu da pi\x87" "em na SD karticu" },
     { "Check", "Proveri" },
+    { "Check the card is FAT32", "Kartica mora biti FAT32" },
     { "Checking", "Proveravam" },
     { "Checking for updates...", "Proveravam a\x88uriranja..." },
     { "Color", "U boji" },
@@ -109,6 +110,8 @@ static const char *const i18n_sr[][2] = {
     { "Network forgotten", "Mre\x88" "a je zaboravljena" },
     { "Networks", "Mre\x88" "e" },
     { "No .wad in this zip", "Nema .wad u ovom zip-u" },
+    { "No SD card - check wiring", "Nema SD kartice - proveri \x88ice" },
+    { "No SD card found", "Nema SD kartice" },
     { "No favorites yet", "Jo\x87 nema omiljenih" },
     { "No games here yet", "Jo\x87 nema igara" },
     { "No internet connection", "Nema interneta" },
@@ -201,8 +204,9 @@ static const char *const i18n_sr[][2] = {
     { "Wi-Fi lost, reconnecting", "Wi-Fi prekinut, ponovo se povezujem" },
     { "Yellow: taxi  Red: race", "\x8duto: taksi  Crveno: trka" },
     { "You lost the cops", "Pobegao si policiji" },
+    { "and the SD wiring", "i proveri \x88ice za SD" },
     { "show up here", "pojavi\x85" "e se ovde" },
     { "to add it here", "da je doda\x87 ovde" },
     { "to the SD card or web UI", "na SD karticu ili web UI" },
 };
-#define I18N_SR_COUNT 202
+#define I18N_SR_COUNT 206

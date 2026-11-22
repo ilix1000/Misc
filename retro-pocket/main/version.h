@@ -1,3 +1,3 @@
 #pragma once
 /* Bump this for every release; OTA compares it with firmware/ota/version.txt. */
-#define FW_VERSION "2.7.2"
+#define FW_VERSION "2.7.3"

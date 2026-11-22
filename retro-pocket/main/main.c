@@ -35,15 +35,15 @@ void app_main(void)
     ESP_LOGI("main", "display + input ready");
     if (!sd_init()) ESP_LOGW("main", "running without SD card");
 
-    /* Wi-Fi and the web server live on core 0... */
+    /* Start the menu task before Wi-Fi so its 20 KB stack is guaranteed to
+     * fit in internal RAM (it saves settings to flash, which needs that). */
+    ESP_LOGI("main", "internal RAM free: %u", (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
+    if (xTaskCreatePinnedToCore(app_task, "app", 20 * 1024, NULL, 5, NULL, 1) != pdPASS)
+        ESP_LOGE("main", "can't start the menu task");
+
+    /* Wi-Fi and the web server live on core 0. */
     wifi_start();
     webui_start();
-    ESP_LOGI("main", "network started");
-
-    /* ...games and the menu on core 1. */
-    if (xTaskCreatePinnedToCore(app_task, "app", 20 * 1024, NULL, 5, NULL, 1) != pdPASS) {
-        ESP_LOGE("main", "not enough RAM for the menu task (%u bytes free)",
-                 (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
-        app_task(NULL);   /* run it right here instead */
-    }
+    ESP_LOGI("main", "network started, internal RAM free: %u",
+             (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
 }

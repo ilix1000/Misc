@@ -45,3 +45,8 @@ CONFIG_LWIP_MAX_SOCKETS=12
 CONFIG_ESPTOOLPY_FLASHMODE_QIO=y
 CONFIG_ESPTOOLPY_FLASHFREQ_80M=y
 CONFIG_SPIRAM_ALLOW_BSS_SEG_EXTERNAL_MEMORY=y
+# Internal RAM is tight (two 40 KB DMA framebuffers + Wi-Fi + web server):
+# fewer static Wi-Fi TX buffers and keep Wi-Fi code in flash, not IRAM.
+CONFIG_ESP_WIFI_STATIC_TX_BUFFER_NUM=8
+# CONFIG_ESP_WIFI_IRAM_OPT is not set
+# CONFIG_ESP_WIFI_RX_IRAM_OPT is not set

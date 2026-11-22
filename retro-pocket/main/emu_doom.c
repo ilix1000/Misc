@@ -55,6 +55,7 @@ static void restart_device(void) { fprintf(stderr, "doom: quit -> restart\n"); e
 #include "esp_system.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/idf_additions.h"
 static void restart_device(void) { video_wait(); esp_restart(); }
 #endif
 
@@ -320,7 +321,9 @@ void emu_doom_run(const char *path)
      * Wi-Fi, the screen buffers and Doom's main screen. Doom gets its own
      * task with a bigger stack, and this (app) task just waits. */
     heap_caps_malloc_extmem_enable(0);
-    xTaskCreatePinnedToCore(doom_main, "doom", 48 * 1024, NULL, 5, NULL, 1);
+    if (xTaskCreatePinnedToCore(doom_main, "doom", 48 * 1024, NULL, 5, NULL, 1) != pdPASS)
+        xTaskCreatePinnedToCoreWithCaps(doom_main, "doom", 48 * 1024, NULL, 5, NULL, 1,
+                                        MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT); /* stack in PSRAM */
     for (;;) vTaskDelay(portMAX_DELAY);
 #endif
 }

@@ -10,3 +10,7 @@ idf_component_register(
 )
 # Emulator cores are third-party code: be fast, and don't fail on their warnings.
 set_source_files_properties(emu_gb.c emu_gbc.c emu_nes.c emu_sms.c emu_pce.c PROPERTIES COMPILE_OPTIONS "-O3;-Wno-unused-function;-Wno-unused-variable;-Wno-unused-but-set-variable;-Wno-implicit-fallthrough;-Wno-maybe-uninitialized;-Wno-type-limits")
+# idf.py -DJOY_ALT=1 build: firmware variant with the joystick on GPIO 3 / 14
+if(JOY_ALT)
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE JOY_ALT_PINS)
+endif()

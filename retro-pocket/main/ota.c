@@ -11,6 +11,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "ota.h"
+#include "board.h"
 #include "i18n.h"
 #include "version.h"
 #include "bridge.h"
@@ -47,7 +48,7 @@ static void defaults(ota_source_t *s)
     memset(s, 0, sizeof(*s));
     strcpy(s->repo, "ilix1000/Misc");
     strcpy(s->branch, "ccr-39f5922b-51eoij");
-    strcpy(s->path, "retro-pocket/firmware/ota");
+    strcpy(s->path, "retro-pocket/firmware/" FW_VARIANT_DIR);
 }
 
 void ota_source_get(ota_source_t *out)
@@ -58,6 +59,8 @@ void ota_source_get(ota_source_t *out)
     nvs_get_blob_compat(h, "src", out, sizeof(*out));
     nvs_close(h);
     out->repo[sizeof(out->repo) - 1] = out->branch[sizeof(out->branch) - 1] = 0;
+    /* a firmware variant (other joystick pins) keeps to its own update folder */
+    if (!strcmp(out->path, "retro-pocket/firmware/ota")) strcpy(out->path, "retro-pocket/firmware/" FW_VARIANT_DIR);
     out->path[sizeof(out->path) - 1] = out->token[sizeof(out->token) - 1] = 0;
 }
 

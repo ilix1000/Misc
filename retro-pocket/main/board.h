@@ -41,8 +41,16 @@
 #define PIN_BTN_SELECT 21
 
 /* ---------- Analog joystick module (power it from 3V3, NOT 5V) ---------- */
+#ifdef JOY_ALT_PINS
+/* "joy3-14" firmware variant: stick on GPIO 3 (ADC1) and 14 (ADC2) */
+#define PIN_JOY_X       3
+#define PIN_JOY_Y      14
+#define FW_VARIANT_DIR  "ota-joy3-14"   /* its own OTA channel */
+#else
 #define PIN_JOY_X       1   /* ADC1 channel 0 */
 #define PIN_JOY_Y       2   /* ADC1 channel 1 */
+#define FW_VARIANT_DIR  "ota"
+#endif
 #define PIN_JOY_SW     47   /* joystick push = MENU button */
 #define JOY_INVERT_X    0
 #define JOY_INVERT_Y    0

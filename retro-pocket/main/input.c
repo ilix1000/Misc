@@ -12,8 +12,10 @@
 
 static const char *TAG = "input";
 
-static adc_oneshot_unit_handle_t s_adc;
-static adc_channel_t s_ch_x, s_ch_y;
+/* X and Y may be on different ADC units (ADC2 is shared with Wi-Fi). */
+static adc_oneshot_unit_handle_t s_unit[2];
+typedef struct { adc_oneshot_unit_handle_t h; adc_channel_t ch; int last; } joy_axis_t;
+static joy_axis_t s_ax_x, s_ax_y;
 static int s_center_x = 2048, s_center_y = 2048;
 static float s_jx, s_jy;
 static uint32_t s_held, s_pressed, s_repeat;
@@ -23,11 +25,26 @@ static int8_t s_dir_x, s_dir_y; /* -1, 0, 1 with hysteresis */
 static const int btn_pins[] = { PIN_BTN_A, PIN_BTN_B, PIN_BTN_START, PIN_BTN_SELECT, PIN_JOY_SW };
 static const uint32_t btn_bits[] = { BTN_A, BTN_B, BTN_START, BTN_SELECT, BTN_MENU };
 
-static int read_adc(adc_channel_t ch)
+static int read_adc(joy_axis_t *a)
 {
-    int v = 0;
-    adc_oneshot_read(s_adc, ch, &v);
-    return v;
+    int v;
+    /* ADC2 reads can fail while Wi-Fi is using it: keep the last value then */
+    if (adc_oneshot_read(a->h, a->ch, &v) == ESP_OK) a->last = v;
+    return a->last;
+}
+
+static void axis_init(joy_axis_t *a, int pin)
+{
+    adc_unit_t unit;
+    ESP_ERROR_CHECK(adc_oneshot_io_to_channel(pin, &unit, &a->ch));
+    if (!s_unit[unit]) {
+        adc_oneshot_unit_init_cfg_t uc = { .unit_id = unit };
+        ESP_ERROR_CHECK(adc_oneshot_new_unit(&uc, &s_unit[unit]));
+    }
+    a->h = s_unit[unit];
+    a->last = 2048;
+    adc_oneshot_chan_cfg_t cc = { .atten = ADC_ATTEN_DB_12, .bitwidth = ADC_BITWIDTH_12 };
+    ESP_ERROR_CHECK(adc_oneshot_config_channel(a->h, a->ch, &cc));
 }
 
 void input_init(void)
@@ -37,18 +54,12 @@ void input_init(void)
         if (btn_pins[i] >= 0) io.pin_bit_mask |= 1ULL << btn_pins[i];
     gpio_config(&io);
 
-    adc_unit_t unit;
-    ESP_ERROR_CHECK(adc_oneshot_io_to_channel(PIN_JOY_X, &unit, &s_ch_x));
-    ESP_ERROR_CHECK(adc_oneshot_io_to_channel(PIN_JOY_Y, &unit, &s_ch_y));
-    adc_oneshot_unit_init_cfg_t uc = { .unit_id = unit };
-    ESP_ERROR_CHECK(adc_oneshot_new_unit(&uc, &s_adc));
-    adc_oneshot_chan_cfg_t cc = { .atten = ADC_ATTEN_DB_12, .bitwidth = ADC_BITWIDTH_12 };
-    ESP_ERROR_CHECK(adc_oneshot_config_channel(s_adc, s_ch_x, &cc));
-    ESP_ERROR_CHECK(adc_oneshot_config_channel(s_adc, s_ch_y, &cc));
+    axis_init(&s_ax_x, PIN_JOY_X);
+    axis_init(&s_ax_y, PIN_JOY_Y);
 
     /* Calibrate the resting position - don't touch the stick while booting. */
     int sx = 0, sy = 0;
-    for (int i = 0; i < 16; i++) { sx += read_adc(s_ch_x); sy += read_adc(s_ch_y); }
+    for (int i = 0; i < 16; i++) { sx += read_adc(&s_ax_x); sy += read_adc(&s_ax_y); }
     s_center_x = sx / 16;
     s_center_y = sy / 16;
     ESP_LOGI(TAG, "joystick center %d,%d", s_center_x, s_center_y);
@@ -71,8 +82,8 @@ static int8_t hysteresis(float v, int8_t prev)
 
 uint32_t input_poll(void)
 {
-    float x = axis(read_adc(s_ch_x), s_center_x);
-    float y = axis(read_adc(s_ch_y), s_center_y);
+    float x = axis(read_adc(&s_ax_x), s_center_x);
+    float y = axis(read_adc(&s_ax_y), s_center_y);
     if (JOY_SWAP_XY) { float t = x; x = y; y = t; }
     if (JOY_INVERT_X) x = -x;
     if (JOY_INVERT_Y) y = -y;

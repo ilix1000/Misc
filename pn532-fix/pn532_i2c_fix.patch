@@ -1,0 +1,172 @@
+diff --git a/components/furi_hal/furi_hal_nfc.c b/components/furi_hal/furi_hal_nfc.c
+index 0f0efca3..5cbe3b1f 100644
+--- a/components/furi_hal/furi_hal_nfc.c
++++ b/components/furi_hal/furi_hal_nfc.c
+@@ -203,13 +203,28 @@ static esp_err_t pn532_i2c_init(void) {
+     esp_err_t err = i2c_driver_install(BOARD_NFC_I2C_PORT, conf.mode, 0, 0, 0);
+     if(err == ESP_OK) {
+         /* Fresh install — configure pins */
+-        i2c_param_config(BOARD_NFC_I2C_PORT, &conf);
+-    } else {
+-        /* Already installed (by power or touch) — reuse as-is */
++        err = i2c_param_config(BOARD_NFC_I2C_PORT, &conf);
++        if(err != ESP_OK) {
++            i2c_driver_delete(BOARD_NFC_I2C_PORT);
++            return err;
++        }
++    } else if(err == ESP_ERR_INVALID_STATE) {
++        /* Already installed (by power, touch or an I2C display on the same
++         * bus) — reuse as-is */
+         FURI_LOG_I(TAG, "I2C bus %d already initialized, reusing", BOARD_NFC_I2C_PORT);
+         err = ESP_OK;
++    } else {
++        return err;
+     }
+-    return err;
++
++    /* The PN532 stretches SCL while it prepares a response (and while it
++     * wakes from power-down). The default hardware bus timeout is shorter
++     * than that, so transfers abort with ESP_ERR_TIMEOUT / ESP_FAIL and the
++     * chip looks absent. Use the longest timeout the controller supports. */
++    for(int tout = 31; tout > 0; tout--) {
++        if(i2c_set_timeout(BOARD_NFC_I2C_PORT, tout) == ESP_OK) break;
++    }
++    return ESP_OK;
+ }
+ 
+ /** Wait for PN532 ready: IRQ pin LOW or I2C RDY byte polling */
+@@ -226,7 +241,7 @@ static bool pn532_wait_ready(uint32_t timeout_ms) {
+     uint32_t start = furi_get_tick();
+     while((furi_get_tick() - start) < timeout_ms) {
+         esp_err_t err = i2c_master_read_from_device(
+-            BOARD_NFC_I2C_PORT, PN532_I2C_ADDR, &status, 1, pdMS_TO_TICKS(10));
++            BOARD_NFC_I2C_PORT, PN532_I2C_ADDR, &status, 1, pdMS_TO_TICKS(50));
+         if(err == ESP_OK && (status & 0x01)) return true;
+         furi_delay_ms(5);
+     }
+@@ -300,9 +315,10 @@ static FuriHalNfcError pn532_send_command(
+     frame[idx++] = (~checksum) + 1;
+     frame[idx++] = 0x00;
+ 
+-    /* Reset I2C FIFOs */
+-    i2c_reset_tx_fifo(BOARD_NFC_I2C_PORT);
+-    i2c_reset_rx_fifo(BOARD_NFC_I2C_PORT);
++    /* No i2c_reset_tx/rx_fifo() here: those touch the controller outside the
++     * driver's bus lock and corrupt a transfer that another device on the
++     * same bus (SSD1306 display, BQ chips) has in flight. The driver already
++     * resets the FIFOs at the start of every transaction. */
+ 
+     esp_err_t err = i2c_master_write_to_device(
+         BOARD_NFC_I2C_PORT, PN532_I2C_ADDR, frame, idx, pdMS_TO_TICKS(1000));
+@@ -355,17 +371,46 @@ static FuriHalNfcError pn532_status_to_error(uint8_t status) {
+ 
+ /* ──────────────────────────── HAL Public API ─────────────────────────────── */
+ 
++/** Wake the PN532 and read its firmware version, retrying a few times.
++ *
++ * Out of power-on (or with no RST line wired) the PN532 can NACK the first
++ * I2C transfers while its oscillator starts, so a single attempt reports a
++ * working chip as missing and NFC stays dead until reboot. */
++static FuriHalNfcError pn532_probe(uint8_t* resp, size_t resp_size) {
++    FuriHalNfcError nfc_err = FuriHalNfcErrorCommunication;
++    for(int attempt = 0; attempt < 5; attempt++) {
++        /* Wake-up: an address-only write (NACK expected while asleep) */
++        i2c_cmd_handle_t wake = i2c_cmd_link_create();
++        if(wake) {
++            i2c_master_start(wake);
++            i2c_master_write_byte(wake, (PN532_I2C_ADDR << 1) | I2C_MASTER_WRITE, false);
++            i2c_master_stop(wake);
++            i2c_master_cmd_begin(BOARD_NFC_I2C_PORT, wake, pdMS_TO_TICKS(50));
++            i2c_cmd_link_delete(wake);
++        }
++        furi_delay_ms(attempt == 0 ? 50 : 200);
++
++        uint8_t cmd[] = {PN532_CMD_GETFIRMWAREVERSION};
++        size_t resp_len = resp_size;
++        nfc_err = pn532_send_command(cmd, sizeof(cmd), resp, &resp_len, 1000);
++        if(nfc_err == FuriHalNfcErrorNone && resp_len >= 4) return FuriHalNfcErrorNone;
++        FURI_LOG_W(TAG, "PN532 probe attempt %d failed (%d)", attempt + 1, nfc_err);
++    }
++    return nfc_err == FuriHalNfcErrorNone ? FuriHalNfcErrorCommunication : nfc_err;
++}
++
+ FuriHalNfcError furi_hal_nfc_init(void) {
+     FURI_LOG_I(TAG, "Initializing NFC HAL (PN532 I2C)");
+ 
+-    nfc_mutex = furi_mutex_alloc(FuriMutexTypeNormal);
+-    nfc_event_flags = furi_event_flag_alloc();
++    /* May run again (lazy re-probe from furi_hal_nfc_is_hal_ready) */
++    if(!nfc_mutex) nfc_mutex = furi_mutex_alloc(FuriMutexTypeNormal);
++    if(!nfc_event_flags) nfc_event_flags = furi_event_flag_alloc();
+ 
+     /* Create software timers */
+     const esp_timer_create_args_t fwt_args = { .callback = fwt_timer_cb, .name = "nfc_fwt" };
+     const esp_timer_create_args_t btx_args = { .callback = block_tx_timer_cb, .name = "nfc_btx" };
+-    esp_timer_create(&fwt_args, &fwt_timer);
+-    esp_timer_create(&btx_args, &block_tx_timer);
++    if(!fwt_timer) esp_timer_create(&fwt_args, &fwt_timer);
++    if(!block_tx_timer) esp_timer_create(&btx_args, &block_tx_timer);
+ 
+     /* Configure IRQ pin */
+ #ifdef BOARD_PIN_NFC_IRQ
+@@ -397,12 +442,11 @@ FuriHalNfcError furi_hal_nfc_init(void) {
+     furi_delay_ms(150);
+ 
+     /* Verify PN532 with GetFirmwareVersion */
+-    uint8_t cmd[] = {PN532_CMD_GETFIRMWAREVERSION};
+     uint8_t resp[4];
+-    size_t resp_len = sizeof(resp);
+-    FuriHalNfcError nfc_err = pn532_send_command(cmd, sizeof(cmd), resp, &resp_len, 2000);
++    FuriHalNfcError nfc_err = pn532_probe(resp, sizeof(resp));
+     if(nfc_err != FuriHalNfcErrorNone) {
+-        FURI_LOG_E(TAG, "PN532 not found");
++        FURI_LOG_E(TAG, "PN532 not found (SDA=%d SCL=%d port=%d addr=0x%02X)",
++            BOARD_PIN_NFC_SDA, BOARD_PIN_NFC_SCL, BOARD_NFC_I2C_PORT, PN532_I2C_ADDR);
+         return FuriHalNfcErrorCommunication;
+     }
+ 
+@@ -429,6 +473,13 @@ FuriHalNfcError furi_hal_nfc_init(void) {
+ }
+ 
+ FuriHalNfcError furi_hal_nfc_is_hal_ready(void) {
++    /* Boot-time bring-up can miss a PN532 that powers up late; probe again
++     * (at most every 2 s) instead of reporting the chip dead until reboot. */
++    static uint32_t last_retry = 0;
++    if(!nfc_hal_ready && (last_retry == 0 || furi_get_tick() - last_retry > 2000)) {
++        last_retry = furi_get_tick();
++        furi_hal_nfc_init();
++    }
+     return nfc_hal_ready ? FuriHalNfcErrorNone : FuriHalNfcErrorCommunication;
+ }
+ 
+diff --git a/components/gui/CMakeLists.txt b/components/gui/CMakeLists.txt
+index cecdf673..94372ee2 100644
+--- a/components/gui/CMakeLists.txt
++++ b/components/gui/CMakeLists.txt
+@@ -4,7 +4,7 @@ else()
+     set(VIEW_INPUT_SRC "view_dispatcher.c")
+ endif()
+ 
+-if(FLIPPER_BOARD STREQUAL "thormini")
++if(FLIPPER_BOARD STREQUAL "thormini" AND EXISTS "${CMAKE_CURRENT_LIST_DIR}/modules/text_input_thormini.c")
+     set(TEXT_INPUT_SRC "modules/text_input_thormini.c")
+ else()
+     set(TEXT_INPUT_SRC "modules/text_input.c")
+diff --git a/components/gui/view_dispatcher_thormini.c b/components/gui/view_dispatcher_thormini.c
+index c85c94df..87f33b55 100644
+--- a/components/gui/view_dispatcher_thormini.c
++++ b/components/gui/view_dispatcher_thormini.c
+@@ -335,6 +335,13 @@ void view_dispatcher_send_custom_event(ViewDispatcher* view_dispatcher, uint32_t
+         FuriStatusOk);
+ }
+ 
++bool view_dispatcher_send_custom_event_nonblocking(
++    ViewDispatcher* view_dispatcher,
++    uint32_t event) {
++    furi_check(view_dispatcher);
++    return furi_message_queue_put(view_dispatcher->event_queue, &event, 0) == FuriStatusOk;
++}
++
+ static const ViewPortOrientation view_dispatcher_view_port_orientation_table[] = {
+     [ViewOrientationVertical] = ViewPortOrientationVertical,
+     [ViewOrientationVerticalFlip] = ViewPortOrientationVerticalFlip,

@@ -131,6 +131,12 @@ static void IRAM_ATTR rx_isr(void* arg) {
     (void)arg;
     const int64_t now = esp_timer_get_time();
     const int64_t d = now - last_edge_us;
+    /* Noise guard: ignore edges closer than 20us. A floating/AGC-noisy OOK
+     * receiver can emit edges at hundreds of kHz; queuing every one floods
+     * the CPU and trips the watchdog so nothing else (the UI) ever runs.
+     * These sub-20us pulses are below the 30us glitch filter anyway, so
+     * dropping them here loses nothing and keeps the system responsive. */
+    if(d < 20) return;
     last_edge_us = now;
     Pulse p = {
         .duration = d > 0xFFFFFFF ? 0xFFFFFFF : (uint32_t)d,
@@ -316,7 +322,7 @@ static bool tx_init(void) {
         .gpio_num = TX_GPIO,
         .clk_src = RMT_CLK_SRC_DEFAULT,
         .resolution_hz = 1000000,
-        .mem_block_symbols = 64,
+        .mem_block_symbols = 48,
         .trans_queue_depth = 4,
     };
     if(rmt_new_tx_channel(&cfg, &tx_chan) != ESP_OK) return false;
@@ -775,11 +781,25 @@ void app_start(void) {
     gpio_isr_handler_add(RX_GPIO, rx_isr, NULL);
 
     if(!tx_init()) printf("TX init failed (GPIO%d)\n", TX_GPIO);
-    if(!display_init()) printf("OLED not found (SCL=GPIO5 SDA=GPIO6 addr 0x3C)\n");
+    if(!display_init()) {
+        printf("OLED not found (SCL=GPIO5 SDA=GPIO6 addr 0x3C)\n");
+    } else {
+        /* Clear the power-on RAM noise and show a splash right away, before
+         * the radios start, so the screen is confirmed independent of RX. */
+        u8g2_t* u = display_u8g2();
+        u8g2_ClearBuffer(u);
+        u8g2_SetFont(u, u8g2_font_7x13B_tr);
+        const char* t = "SUB-GHZ";
+        u8g2_DrawStr(u, (W - u8g2_GetStrWidth(u, t)) / 2, 22, t);
+        u8g2_SetFont(u, u8g2_font_5x7_tr);
+        t = "booting...";
+        u8g2_DrawStr(u, (W - u8g2_GetStrWidth(u, t)) / 2, 38, t);
+        display_flush();
+    }
 
     printf("Sub-GHz transceiver ready. RX=GPIO4 TX=GPIO3.\n");
 
     xTaskCreate(decode_task, "decode", 12 * 1024, NULL, tskIDLE_PRIORITY, NULL);
     xTaskCreate(button_task, "btn", 3 * 1024, NULL, 4, NULL);
-    xTaskCreate(ui_task, "ui", 6 * 1024, NULL, 2, NULL);
+    xTaskCreate(ui_task, "ui", 8 * 1024, NULL, 3, NULL);
 }

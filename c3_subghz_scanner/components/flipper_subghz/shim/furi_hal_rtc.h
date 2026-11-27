@@ -1,0 +1,10 @@
+#pragma once
+#include <stdint.h>
+typedef struct {
+    uint8_t hour, minute, second;
+    uint8_t day, month;
+    uint16_t year;
+    uint8_t weekday;
+} DateTime;
+void furi_hal_rtc_get_datetime(DateTime* datetime);
+uint32_t datetime_datetime_to_timestamp(DateTime* datetime);

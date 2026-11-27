@@ -44,7 +44,7 @@ index 078fa1f2..0381b465 100644
  
      dialog_message_set_header(message, header_text, 63, 3, AlignCenter, AlignTop);
 diff --git a/components/furi_hal/boards/board_thormini.h b/components/furi_hal/boards/board_thormini.h
-index cfbfb935..25fd6ca6 100644
+index cfbfb935..7a8b12f0 100644
 --- a/components/furi_hal/boards/board_thormini.h
 +++ b/components/furi_hal/boards/board_thormini.h
 @@ -15,9 +15,9 @@
@@ -77,10 +77,13 @@ index cfbfb935..25fd6ca6 100644
  
  /* ---- CC1101 (independent software SPI) ---- */
  #define BOARD_PIN_CC1101_GDO0 14
-@@ -55,6 +60,9 @@
+@@ -54,7 +59,11 @@
+ #define BOARD_PIN_CC1101_SCK  12
  #define BOARD_PIN_CC1101_MOSI 11
  #define BOARD_PIN_CC1101_MISO 13
- #define BOARD_CC1101_SPI_SHARED 1
+-#define BOARD_CC1101_SPI_SHARED 1
++/* 0 = CC1101/NRF24 bus driven by plain GPIO bit-bang (no SPI peripheral) */
++#define BOARD_CC1101_SPI_SHARED 0
 +/* Drive the CC1101 CSn by hand and wait for SO (MISO) to go low before each
 + * transfer, as the CC1101 datasheet requires after reset / wake from SLEEP. */
 +#define BOARD_CC1101_WAIT_MISO 1
@@ -88,7 +91,7 @@ index cfbfb935..25fd6ca6 100644
  
  
 diff --git a/components/furi_hal/furi_hal_spi.c b/components/furi_hal/furi_hal_spi.c
-index 67eb1e5e..38d36ad8 100644
+index 67eb1e5e..a153817f 100644
 --- a/components/furi_hal/furi_hal_spi.c
 +++ b/components/furi_hal/furi_hal_spi.c
 @@ -7,6 +7,7 @@
@@ -140,7 +143,33 @@ index 67eb1e5e..38d36ad8 100644
          .queue_size = 1,
          .flags = 0,
      };
-@@ -398,8 +421,30 @@ bool furi_hal_spi_bus_trx(
+@@ -357,6 +380,25 @@ bool furi_hal_spi_bus_trx(
+         furi_hal_gpio_write(handle->cs, false);
+         furi_hal_spi_bitbang_delay();
+ 
++        if(furi_hal_spi_cs_manual(handle) && furi_hal_spi_pin_valid(handle->miso)) {
++            /* CC1101: wait for CHIP_RDYn (SO low), max 5 ms; on timeout clock
++             * anyway so the raw reply still shows up in the probe log. */
++            const int64_t start = esp_timer_get_time();
++            while(furi_hal_gpio_read(handle->miso)) {
++                if(esp_timer_get_time() - start > 5000) {
++                    static uint32_t warned = 0;
++                    if(warned++ < 4) {
++                        ESP_LOGW(
++                            TAG,
++                            "CC1101 not ready: SO(GPIO%u) stayed high with CSn(GPIO%u) low",
++                            handle->miso->pin,
++                            handle->cs->pin);
++                    }
++                    break;
++                }
++            }
++        }
++
+         for(size_t byte_index = 0; byte_index < size; byte_index++) {
+             uint8_t tx = tx_buffer ? tx_buffer[byte_index] : 0xFF;
+             uint8_t rx = 0;
+@@ -398,8 +440,30 @@ bool furi_hal_spi_bus_trx(
          .rx_buffer = rx_buffer,
      };
  

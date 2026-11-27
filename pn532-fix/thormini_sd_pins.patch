@@ -1,13 +1,16 @@
 diff --git a/components/furi_hal/boards/board_thormini.h b/components/furi_hal/boards/board_thormini.h
-index cfbfb935..01747b83 100644
+index cfbfb935..33536e8f 100644
 --- a/components/furi_hal/boards/board_thormini.h
 +++ b/components/furi_hal/boards/board_thormini.h
-@@ -17,7 +17,7 @@
+@@ -15,9 +15,9 @@
+ #define BOARD_PIN_BTN_UP   47
+ #define BOARD_PIN_BTN_DOWN 42
  #define BOARD_PIN_BTN_OK   0
- #define BOARD_PIN_BTN_LEFT 46
+-#define BOARD_PIN_BTN_LEFT 46
++#define BOARD_PIN_BTN_LEFT 4    /* moved from 46: grounding GPIO46 resets the board */
  #define BOARD_PIN_BTN_RIGHT 45
 -#define BOARD_PIN_BTN_BACK 18 
-+#define BOARD_PIN_BTN_BACK 5   /* moved from 18: GPIO18 is now SD CS */
++#define BOARD_PIN_BTN_BACK 5    /* moved from 18: GPIO18 is now SD CS */
  #define BOARD_PIN_BUTTON_BOOT 0
  #define BOARD_PIN_BATTERY_ADC UINT16_MAX
  

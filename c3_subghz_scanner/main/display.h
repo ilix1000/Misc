@@ -1,12 +1,13 @@
 #pragma once
 #include <stdbool.h>
 #include <stdint.h>
+#include "u8g2.h"
 
-/* Start the OLED (SSD1306 128x64, I2C SDA=GPIO5 SCL=GPIO6). */
-bool display_start(void);
+/* SSD1306 128x64 OLED on I2C (SCL=GPIO5, SDA=GPIO6, addr 0x3C). */
+bool display_init(void);
 
-/* Called by the decoder for every (filtered) pulse: drives the live signal view. */
-void display_on_pulse(bool level, uint32_t duration_us);
+/* The u8g2 render context drawing into the off-screen buffer. */
+u8g2_t* display_u8g2(void);
 
-/* Called when a code was decoded (Flipper description text). */
-void display_on_decoded(const char* protocol, const char* text);
+/* Push the current buffer to the panel. */
+void display_flush(void);

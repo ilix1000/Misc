@@ -1,2 +1,7 @@
 CONFIG_IDF_TARGET="esp32c3"
 CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
+# Quiet serial: only "Reading..." and received codes
+CONFIG_BOOTLOADER_LOG_LEVEL_NONE=y
+CONFIG_LOG_DEFAULT_LEVEL_NONE=y
+# The decoder runs flat out on receiver noise; don't treat that as a hang
+CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU0=n

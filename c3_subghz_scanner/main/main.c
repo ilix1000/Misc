@@ -90,7 +90,8 @@ static void on_decoded(SubGhzReceiver* receiver, SubGhzProtocolDecoderBase* deco
     recent[oldest].last_us = now;
 
     count++;
-    printf("\n#%lu  [%s]\n%s\n", (unsigned long)count, decoder->protocol->name, s);
+    printf("\n%s", s);
+    if(s[0] && s[strlen(s) - 1] != '\n') printf("\n");
 }
 
 static void decode_task(void* arg) {
@@ -102,16 +103,17 @@ static void decode_task(void* arg) {
     subghz_receiver_set_rx_callback(receiver, on_decoded, NULL);
     text = furi_string_alloc();
 
-    printf("Sub-GHz scanner on GPIO%d: %u protocols loaded, listening...\n",
-           RX_GPIO, (unsigned)subghz_protocol_registry.size);
+    printf("Reading...\n");
 
     /* Glitch filter, same as the Flipper's subghz_worker: merge pulses
      * shorter than FILTER_US into the current one. */
+    uint32_t fed = 0;
     bool cur_level = false;
     uint32_t cur_dur = 0;
     Pulse p;
     while(1) {
         if(xQueueReceive(pulse_q, &p, portMAX_DELAY) != pdTRUE) continue;
+        if(++fed % 256 == 0) taskYIELD(); /* share the CPU with the idle task */
         if(p.duration < FILTER_US || p.level == cur_level) {
             cur_dur += p.duration;
         } else {
@@ -136,5 +138,7 @@ void app_main(void) {
     gpio_install_isr_service(ESP_INTR_FLAG_IRAM);
     gpio_isr_handler_add(RX_GPIO, rx_isr, NULL);
 
-    xTaskCreate(decode_task, "subghz_decode", 12 * 1024, NULL, 5, NULL);
+    /* Lowest priority: on a noisy receiver it shares the CPU with the idle task
+     * instead of starving it. */
+    xTaskCreate(decode_task, "subghz_decode", 12 * 1024, NULL, tskIDLE_PRIORITY, NULL);
 }

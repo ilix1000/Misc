@@ -44,7 +44,7 @@ index 078fa1f2..0381b465 100644
  
      dialog_message_set_header(message, header_text, 63, 3, AlignCenter, AlignTop);
 diff --git a/components/furi_hal/boards/board_thormini.h b/components/furi_hal/boards/board_thormini.h
-index cfbfb935..33536e8f 100644
+index cfbfb935..25fd6ca6 100644
 --- a/components/furi_hal/boards/board_thormini.h
 +++ b/components/furi_hal/boards/board_thormini.h
 @@ -15,9 +15,9 @@
@@ -77,6 +77,100 @@ index cfbfb935..33536e8f 100644
  
  /* ---- CC1101 (independent software SPI) ---- */
  #define BOARD_PIN_CC1101_GDO0 14
+@@ -55,6 +60,9 @@
+ #define BOARD_PIN_CC1101_MOSI 11
+ #define BOARD_PIN_CC1101_MISO 13
+ #define BOARD_CC1101_SPI_SHARED 1
++/* Drive the CC1101 CSn by hand and wait for SO (MISO) to go low before each
++ * transfer, as the CC1101 datasheet requires after reset / wake from SLEEP. */
++#define BOARD_CC1101_WAIT_MISO 1
+ 
+ 
+ 
+diff --git a/components/furi_hal/furi_hal_spi.c b/components/furi_hal/furi_hal_spi.c
+index 67eb1e5e..38d36ad8 100644
+--- a/components/furi_hal/furi_hal_spi.c
++++ b/components/furi_hal/furi_hal_spi.c
+@@ -7,6 +7,7 @@
+ #include <driver/gpio.h>
+ #include <esp_log.h>
+ #include <esp_rom_sys.h>
++#include <esp_timer.h>
+ 
+ #include <furi.h>
+ #include <furi_hal_gpio.h>
+@@ -110,6 +111,22 @@ static bool furi_hal_spi_pin_valid(const GpioPin* pin) {
+     return pin && pin->pin != FURI_HAL_SPI_PIN_UNMAPPED;
+ }
+ 
++#if defined(BOARD_CC1101_WAIT_MISO) && BOARD_CC1101_WAIT_MISO
++/* CC1101: after CSn goes low the chip holds SO high (CHIP_RDYn) until its
++ * crystal is running — after SRES or when woken from SLEEP that takes up to
++ * a few hundred microseconds. A header byte clocked in before SO goes low is
++ * lost or garbled (status 0xFF, PARTNUM/VERSION junk). Hardware CS cannot
++ * wait for that, so this handle drives CSn by hand. */
++static bool furi_hal_spi_cs_manual(const FuriHalSpiBusHandle* handle) {
++    return handle == &furi_hal_spi_bus_handle_subghz;
++}
++#else
++static bool furi_hal_spi_cs_manual(const FuriHalSpiBusHandle* handle) {
++    UNUSED(handle);
++    return false;
++}
++#endif
++
+ static void furi_hal_spi_bitbang_delay(void) {
+     esp_rom_delay_us(FURI_HAL_SPI_BITBANG_DELAY_US);
+ }
+@@ -224,10 +241,16 @@ void furi_hal_spi_bus_handle_init(const FuriHalSpiBusHandle* handle) {
+         return;
+     }
+ 
++    const bool cs_manual = furi_hal_spi_cs_manual(handle);
++    if(cs_manual) {
++        furi_hal_gpio_write(handle->cs, true);
++        furi_hal_gpio_init_simple(handle->cs, GpioModeOutputPushPull);
++    }
++
+     spi_device_interface_config_t dev_config = {
+         .clock_speed_hz = mutable_handle->frequency_hz ? (int)mutable_handle->frequency_hz : 2 * 1000 * 1000,
+         .mode = mutable_handle->mode,
+-        .spics_io_num = handle->cs->pin,
++        .spics_io_num = cs_manual ? -1 : handle->cs->pin,
+         .queue_size = 1,
+         .flags = 0,
+     };
+@@ -398,8 +421,30 @@ bool furi_hal_spi_bus_trx(
+         .rx_buffer = rx_buffer,
+     };
+ 
++    const bool cs_manual = furi_hal_spi_cs_manual(handle);
++    if(cs_manual) {
++        furi_hal_gpio_write(handle->cs, false);
++        if(furi_hal_spi_pin_valid(handle->miso)) {
++            /* Wait for CHIP_RDYn (SO low), max 5 ms */
++            const int64_t deadline = esp_timer_get_time() + 5000;
++            while(gpio_get_level((gpio_num_t)handle->miso->pin)) {
++                if(esp_timer_get_time() > deadline) {
++                    furi_hal_gpio_write(handle->cs, true);
++                    ESP_LOGW(TAG, "CC1101 not ready (SO stuck high)");
++                    furi_hal_spi_fill_stub_rx(rx_buffer, size);
++                    success = false;
++                    goto out;
++                }
++            }
++        }
++    }
++
+     esp_err_t err =
+         spi_device_polling_transmit((spi_device_handle_t)handle->device, &transaction);
++    if(cs_manual) {
++        esp_rom_delay_us(1);
++        furi_hal_gpio_write(handle->cs, true);
++    }
+     if(err != ESP_OK) {
+         ESP_LOGW(TAG, "spi_device_polling_transmit failed: %s", esp_err_to_name(err));
+         furi_hal_spi_fill_stub_rx(rx_buffer, size);
 diff --git a/components/furi_hal/furi_hal_subghz.c b/components/furi_hal/furi_hal_subghz.c
 index 030335ac..c29849e3 100644
 --- a/components/furi_hal/furi_hal_subghz.c

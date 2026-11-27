@@ -19,6 +19,10 @@
 #define W 128
 #define H 64
 
+/* Horizontal shift of the visible area in the controller's RAM.
+ * SSD1306 = 0. SH1106 (common on 1.3" modules) has 132-col RAM, use 2. */
+#define OLED_COL_OFFSET 0
+
 static i2c_master_dev_handle_t oled;
 static u8g2_t u8g2;
 
@@ -49,7 +53,8 @@ static bool oled_init(void) {
 
     static const uint8_t init[] = {
         0xAE,       0xD5, 0x80, 0xA8, 0x3F, 0xD3, 0x00, 0x40, 0x8D, 0x14,
-        0x20, 0x00, 0xA1, 0xC8, 0xDA, 0x12, 0x81, 0xCF, 0xD9, 0xF1,
+        0x20, 0x02, /* page addressing mode: most compatible across clones */
+        0xA1, 0xC8, 0xDA, 0x12, 0x81, 0xCF, 0xD9, 0xF1,
         0xDB, 0x40, 0xA4, 0xA6, 0xAF,
     };
     return oled_cmds(init, sizeof(init)) == ESP_OK;
@@ -88,10 +93,21 @@ u8g2_t* display_u8g2(void) {
 }
 
 void display_flush(void) {
-    static const uint8_t window[] = {0x21, 0, W - 1, 0x22, 0, H / 8 - 1};
-    oled_cmds(window, sizeof(window));
-    static uint8_t buf[1 + W * H / 8];
-    buf[0] = 0x40; /* data stream */
-    memcpy(&buf[1], u8g2_GetBufferPtr(&u8g2), W * H / 8);
-    i2c_master_transmit(oled, buf, sizeof(buf), 200);
+    /* Page-by-page write: works on every SSD1306/SH1106 clone, unlike the
+     * SSD1306 horizontal-addressing window which some clones ignore (that
+     * left the panel showing power-on RAM noise). The u8g2 buffer is already
+     * in page-major SSD1306 layout, so each page is a 128-byte slice. */
+    const uint8_t* fb = u8g2_GetBufferPtr(&u8g2);
+    for(int page = 0; page < H / 8; page++) {
+        const uint8_t set_page[] = {
+            (uint8_t)(0xB0 | page),
+            (uint8_t)(0x00 | (OLED_COL_OFFSET & 0x0F)),        /* column low nibble */
+            (uint8_t)(0x10 | ((OLED_COL_OFFSET >> 4) & 0x0F)), /* column high nibble */
+        };
+        oled_cmds(set_page, sizeof(set_page));
+        uint8_t buf[1 + W];
+        buf[0] = 0x40; /* data stream */
+        memcpy(&buf[1], fb + page * W, W);
+        i2c_master_transmit(oled, buf, sizeof(buf), 100);
+    }
 }

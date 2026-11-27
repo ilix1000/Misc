@@ -3,6 +3,7 @@
  *
  * Wiring: 433 MHz (or 315/868 MHz) ASK/OOK receiver module
  *   DATA -> GPIO4, VCC -> 3.3V, GND -> GND
+ * SSD1306 128x64 I2C OLED: SDA -> GPIO5, SCL -> GPIO6, VCC -> 3.3V, GND -> GND
  *   (The C3 is NOT 5V tolerant: with a 5V module, put a 10k/20k divider on DATA.)
  *
  * Uses the Flipper firmware's own Sub-GHz protocol library (Princeton, CAME,
@@ -25,6 +26,7 @@
 #include "environment.h"
 #include "receiver.h"
 #include "protocols/protocol_items.h"
+#include "display.h"
 
 #define RX_GPIO          4
 #define FILTER_US        30    /* same glitch filter as the Flipper (subghz_worker) */
@@ -90,6 +92,7 @@ static void on_decoded(SubGhzReceiver* receiver, SubGhzProtocolDecoderBase* deco
     recent[oldest].last_us = now;
 
     count++;
+    display_on_decoded(decoder->protocol->name, s);
     printf("\n%s", s);
     if(s[0] && s[strlen(s) - 1] != '\n') printf("\n");
 }
@@ -118,6 +121,7 @@ static void decode_task(void* arg) {
             cur_dur += p.duration;
         } else {
             subghz_receiver_decode(receiver, cur_level, cur_dur);
+            display_on_pulse(cur_level, cur_dur);
             cur_level = p.level;
             cur_dur = p.duration;
         }
@@ -140,5 +144,6 @@ void app_main(void) {
 
     /* Lowest priority: on a noisy receiver it shares the CPU with the idle task
      * instead of starving it. */
+    if(!display_start()) printf("OLED not found (SDA=GPIO5, SCL=GPIO6, addr 0x3C)\n");
     xTaskCreate(decode_task, "subghz_decode", 12 * 1024, NULL, tskIDLE_PRIORITY, NULL);
 }

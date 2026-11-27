@@ -10,6 +10,10 @@
 #include <stdarg.h>
 #include <esp_log.h>
 
+/* The Flipper's malloc() always returns zeroed memory and several decoders
+ * rely on it (e.g. Honeywell never initialises its Manchester state). */
+#define malloc(size) calloc(1, (size))
+
 #ifdef __cplusplus
 extern "C" {
 #endif

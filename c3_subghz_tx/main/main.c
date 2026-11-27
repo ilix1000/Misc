@@ -8,8 +8,7 @@
  * A Flipper Zero in Sub-GHz -> Read, at the module's frequency with the
  * AM650 preset, shows: "Princeton 24bit  Key:0x00ABCDE1  TE:390us"
  *
- * Sends a burst every SEND_INTERVAL_MS, and right away when the BOOT button
- * (GPIO9) is pressed.
+ * Transmits while the BOOT button (GPIO9) is held, like a remote.
  */
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
@@ -26,7 +25,6 @@
 #define TE_US            390        /* Flipper's Princeton te_short */
 #define GUARD_TE         30         /* gap after each frame = 30 * TE */
 #define REPEATS          10         /* frames per burst */
-#define SEND_INTERVAL_MS 3000
 
 static const char* TAG = "subghz_tx";
 
@@ -85,14 +83,12 @@ void app_main(void) {
     build_frame(PRINCETON_KEY);
     ESP_LOGI(TAG, "Princeton TX on GPIO%d, TE=%dus", TX_GPIO, TE_US);
 
-    TickType_t last = 0;
+    /* Like a remote: transmit only while the BOOT button is held */
     while(1) {
-        const bool pressed = gpio_get_level(BUTTON_GPIO) == 0;
-        if(pressed || (xTaskGetTickCount() - last) >= pdMS_TO_TICKS(SEND_INTERVAL_MS)) {
-            send_burst();
-            last = xTaskGetTickCount();
-            if(pressed) {
-                while(gpio_get_level(BUTTON_GPIO) == 0) vTaskDelay(pdMS_TO_TICKS(10));
+        if(gpio_get_level(BUTTON_GPIO) == 0) {
+            vTaskDelay(pdMS_TO_TICKS(20)); /* debounce */
+            while(gpio_get_level(BUTTON_GPIO) == 0) {
+                send_burst();
             }
         }
         vTaskDelay(pdMS_TO_TICKS(20));

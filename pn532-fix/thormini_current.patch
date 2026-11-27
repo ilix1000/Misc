@@ -1,0 +1,158 @@
+diff --git a/applications/main/subghz/subghz_i.c b/applications/main/subghz/subghz_i.c
+index 078fa1f2..0381b465 100644
+--- a/applications/main/subghz/subghz_i.c
++++ b/applications/main/subghz/subghz_i.c
+@@ -3,6 +3,8 @@
+ #include "assets_icons.h"
+ #include "subghz/types.h"
+ #include <furi.h>
++#include <stdio.h>
++#include <furi_hal_subghz.h>
+ #include <notification/notification.h>
+ #include <notification/notification_messages.h>
+ #include <flipper_format/flipper_format.h>
+@@ -44,9 +46,31 @@ void subghz_dialog_message_freq_error(SubGhz* subghz, bool only_rx) {
+     const char* header_text = "Frequency not supported";
+     const char* message_text = "Frequency\nis outside of\nsupported range.";
+ 
++    static char diag_text[96];
+     if(only_rx) {
+         header_text = "Transmission is blocked";
+         message_text = "Frequency\nis outside of\ndefault range.\nCheck docs.";
++
++        /* The same error is returned when the CC1101 never enters TX because
++         * it does not answer on SPI. Tell those two cases apart on screen. */
++        uint8_t part = 0, ver = 0;
++        if(!furi_hal_subghz_probe_now(&part, &ver)) {
++            int csn, sck, mosi, miso, gdo0;
++            furi_hal_subghz_get_pins(&csn, &sck, &mosi, &miso, &gdo0);
++            header_text = "CC1101 not detected";
++            snprintf(
++                diag_text,
++                sizeof(diag_text),
++                "CS%d SCK%d\nMOSI%d MISO%d\nGDO0 %d\nreply %02X/%02X",
++                csn,
++                sck,
++                mosi,
++                miso,
++                gdo0,
++                part,
++                ver);
++            message_text = diag_text;
++        }
+     }
+ 
+     dialog_message_set_header(message, header_text, 63, 3, AlignCenter, AlignTop);
+diff --git a/components/furi_hal/boards/board_thormini.h b/components/furi_hal/boards/board_thormini.h
+index cfbfb935..33536e8f 100644
+--- a/components/furi_hal/boards/board_thormini.h
++++ b/components/furi_hal/boards/board_thormini.h
+@@ -15,9 +15,9 @@
+ #define BOARD_PIN_BTN_UP   47
+ #define BOARD_PIN_BTN_DOWN 42
+ #define BOARD_PIN_BTN_OK   0
+-#define BOARD_PIN_BTN_LEFT 46
++#define BOARD_PIN_BTN_LEFT 4    /* moved from 46: grounding GPIO46 resets the board */
+ #define BOARD_PIN_BTN_RIGHT 45
+-#define BOARD_PIN_BTN_BACK 18 
++#define BOARD_PIN_BTN_BACK 5    /* moved from 18: GPIO18 is now SD CS */
+ #define BOARD_PIN_BUTTON_BOOT 0
+ #define BOARD_PIN_BATTERY_ADC UINT16_MAX
+ 
+@@ -44,9 +44,14 @@
+ #define BOARD_PIN_LCD_BL   UINT16_MAX
+ #define BOARD_LCD_BL_ACTIVE_LOW false
+ 
+-/* ---- SD card (dedicated SPI2 bus) ---- */
+-#define BOARD_PIN_SD_CS   21
+-#define BOARD_PIN_SD_MISO 13
++/* ---- SD card (dedicated SPI3 bus, not shared with CC1101/NRF24) ---- */
++#define BOARD_SD_BUS_NOT_SHARED 1
++#define BOARD_PIN_SD_CS    18
++#define BOARD_PIN_SD_SCK   16
++#define BOARD_PIN_SD_MOSI  15
++#define BOARD_PIN_SD_MISO2 17   /* MISO of the dedicated SD bus */
++#define BOARD_PIN_SD_MISO  13   /* compatibility: shared radio SPI MISO */
++#define BOARD_SD_SPI_HOST  SPI3_HOST
+ 
+ /* ---- CC1101 (independent software SPI) ---- */
+ #define BOARD_PIN_CC1101_GDO0 14
+diff --git a/components/furi_hal/furi_hal_subghz.c b/components/furi_hal/furi_hal_subghz.c
+index 030335ac..c29849e3 100644
+--- a/components/furi_hal/furi_hal_subghz.c
++++ b/components/furi_hal/furi_hal_subghz.c
+@@ -434,6 +434,23 @@ static void furi_hal_subghz_log_probe(const FuriHalSubGhzProbe* probe, bool conn
+         hint);
+ }
+ 
++bool furi_hal_subghz_probe_now(uint8_t* part_out, uint8_t* ver_out) {
++    FuriHalSubGhzProbe probe = {0};
++    bool ok = furi_hal_subghz_probe_read(&probe, false);
++    furi_hal_subghz_log_probe(&probe, ok);
++    if(part_out) *part_out = probe.partnumber;
++    if(ver_out) *ver_out = probe.version;
++    return ok;
++}
++
++void furi_hal_subghz_get_pins(int* csn, int* sck, int* mosi, int* miso, int* gdo0) {
++    if(csn) *csn = BOARD_PIN_CC1101_CSN;
++    if(sck) *sck = BOARD_PIN_CC1101_SCK;
++    if(mosi) *mosi = BOARD_PIN_CC1101_MOSI;
++    if(miso) *miso = BOARD_PIN_CC1101_MISO;
++    if(gdo0) *gdo0 = BOARD_PIN_CC1101_GDO0;
++}
++
+ int32_t furi_hal_subghz_get_rolling_counter_mult(void) {
+     return furi_hal_subghz.rolling_counter_mult;
+ }
+diff --git a/components/furi_hal/furi_hal_subghz.h b/components/furi_hal/furi_hal_subghz.h
+index 4ed12eaa..36e9cef9 100644
+--- a/components/furi_hal/furi_hal_subghz.h
++++ b/components/furi_hal/furi_hal_subghz.h
+@@ -52,6 +52,15 @@ uint8_t furi_hal_subghz_get_lqi(void);
+ bool furi_hal_subghz_is_frequency_valid(uint32_t value);
+ uint32_t furi_hal_subghz_set_frequency_and_path(uint32_t value);
+ bool furi_hal_subghz_is_tx_allowed(uint32_t value);
++
++/** Probe the CC1101 over SPI right now.
++ * @param part_out  part number byte read back (may be NULL)
++ * @param ver_out   version byte read back (may be NULL)
++ * @return true if a CC1101 answered */
++bool furi_hal_subghz_probe_now(uint8_t* part_out, uint8_t* ver_out);
++
++/** GPIO numbers the CC1101 driver uses (for on-screen diagnostics). */
++void furi_hal_subghz_get_pins(int* csn, int* sck, int* mosi, int* miso, int* gdo0);
+ int32_t furi_hal_subghz_get_rolling_counter_mult(void);
+ void furi_hal_subghz_set_rolling_counter_mult(int32_t mult);
+ uint32_t furi_hal_subghz_set_frequency(uint32_t value);
+diff --git a/components/gui/CMakeLists.txt b/components/gui/CMakeLists.txt
+index cecdf673..94372ee2 100644
+--- a/components/gui/CMakeLists.txt
++++ b/components/gui/CMakeLists.txt
+@@ -4,7 +4,7 @@ else()
+     set(VIEW_INPUT_SRC "view_dispatcher.c")
+ endif()
+ 
+-if(FLIPPER_BOARD STREQUAL "thormini")
++if(FLIPPER_BOARD STREQUAL "thormini" AND EXISTS "${CMAKE_CURRENT_LIST_DIR}/modules/text_input_thormini.c")
+     set(TEXT_INPUT_SRC "modules/text_input_thormini.c")
+ else()
+     set(TEXT_INPUT_SRC "modules/text_input.c")
+diff --git a/components/gui/view_dispatcher_thormini.c b/components/gui/view_dispatcher_thormini.c
+index c85c94df..87f33b55 100644
+--- a/components/gui/view_dispatcher_thormini.c
++++ b/components/gui/view_dispatcher_thormini.c
+@@ -335,6 +335,13 @@ void view_dispatcher_send_custom_event(ViewDispatcher* view_dispatcher, uint32_t
+         FuriStatusOk);
+ }
+ 
++bool view_dispatcher_send_custom_event_nonblocking(
++    ViewDispatcher* view_dispatcher,
++    uint32_t event) {
++    furi_check(view_dispatcher);
++    return furi_message_queue_put(view_dispatcher->event_queue, &event, 0) == FuriStatusOk;
++}
++
+ static const ViewPortOrientation view_dispatcher_view_port_orientation_table[] = {
+     [ViewOrientationVertical] = ViewPortOrientationVertical,
+     [ViewOrientationVerticalFlip] = ViewPortOrientationVerticalFlip,
